@@ -1,0 +1,293 @@
+---
+title: "Participants API — competitor records"
+description: "Register and manage competitor profiles linked to an organization license, with idempotent creation keyed on licenseId to avoid duplicates."
+---
+
+A participant represents a competitor registered in PitPath Chrono. Each participant is linked to a license and stores personal details such as name, email, and phone number. You can also attach arbitrary extra fields via `extraFieldsJson` for organization-specific data. GET endpoints are public and require no authentication. POST and PATCH require a CRUD-level key.
+
+<Info>
+  `POST /api/v1/participants` is idempotent by `licenseId`. If a participant already exists for the given `licenseId`, the server returns the existing record with `200 OK` instead of creating a duplicate. A new record returns `201 Created`.
+</Info>
+
+---
+
+## GET /api/v1/participants
+
+Return all participants.
+
+**Authentication:** None required
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/participants
+```
+
+The response is an array of participant objects.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the participant.
+</ResponseField>
+
+<ResponseField name="licenseId" type="string (UUID)" required>
+  UUID of the license this participant is linked to.
+</ResponseField>
+
+<ResponseField name="licenseDisplayName" type="string" required>
+  Human-readable name of the associated license.
+</ResponseField>
+
+<ResponseField name="firstName" type="string" required>
+  Participant's first name.
+</ResponseField>
+
+<ResponseField name="lastName" type="string" required>
+  Participant's last name.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Participant's email address.
+</ResponseField>
+
+<ResponseField name="phoneNumber" type="string" required>
+  Participant's phone number.
+</ResponseField>
+
+<ResponseField name="extraFieldsJson" type="object">
+  Arbitrary JSON object for organization-specific fields.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the participant was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update.
+</ResponseField>
+
+```json
+[
+  {
+    "id": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "licenseDisplayName": "Acme Racing Team",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "+49 151 00000000",
+    "extraFieldsJson": { "driverNumber": "42" },
+    "createdAt": "2026-05-01T08:00:00Z",
+    "updatedAt": "2026-05-01T08:00:00Z"
+  }
+]
+```
+
+---
+
+## GET /api/v1/participants/paged
+
+Return a paginated list of participants, sorted by `lastName` ascending by default.
+
+**Authentication:** None required
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page number.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of participants per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="lastName">
+  Field to sort by, optionally followed by `,asc` or `,desc`.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url 'https://api.pitpath.de/api/v1/participants/paged?page=0&size=20&sort=lastName,asc'
+```
+
+Returns a page envelope with `content`, `totalElements`, `totalPages`, `number`, and `size`.
+
+```json
+{
+  "content": [
+    {
+      "id": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+      "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "licenseDisplayName": "Acme Racing Team",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "email": "jane.doe@example.com",
+      "phoneNumber": "+49 151 00000000",
+      "extraFieldsJson": {},
+      "createdAt": "2026-05-01T08:00:00Z",
+      "updatedAt": "2026-05-01T08:00:00Z"
+    }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
+```
+
+---
+
+## GET /api/v1/participants/{participantId}
+
+Return a single participant by UUID.
+
+**Authentication:** None required
+
+<ParamField path="participantId" type="string (UUID)" required>
+  UUID of the participant to retrieve.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/participants/p1a2r3t4-i5c6-7890-abcd-ef1234567890
+```
+
+Returns a single participant object with the same shape as items from `GET /api/v1/participants`.
+
+```json
+{
+  "id": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "phoneNumber": "+49 151 00000000",
+  "extraFieldsJson": { "driverNumber": "42" },
+  "createdAt": "2026-05-01T08:00:00Z",
+  "updatedAt": "2026-05-01T08:00:00Z"
+}
+```
+
+---
+
+## POST /api/v1/participants
+
+Create a new participant. If a participant already exists for the given `licenseId`, the existing record is returned with `200 OK` and no data is changed. A new record returns `201 Created`.
+
+**Required role:** CRUD or higher
+
+<ParamField body="licenseId" type="string (UUID)" required>
+  UUID of the license to associate with this participant. This field drives the idempotency check.
+</ParamField>
+
+<ParamField body="firstName" type="string" required>
+  Participant's first name. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Participant's last name. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Valid email address. Maximum 120 characters. Must match the pattern `name@domain.tld`.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" required>
+  Phone number in any format. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="extraFieldsJson" type="string">
+  JSON string containing arbitrary extra fields. The server parses and stores this as a JSON object.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/participants \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "+49 151 00000000",
+    "extraFieldsJson": "{\"driverNumber\":\"42\"}"
+  }'
+```
+
+Returns `201 Created` for a new participant, or `200 OK` when the participant already exists.
+
+```json
+{
+  "id": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "phoneNumber": "+49 151 00000000",
+  "extraFieldsJson": { "driverNumber": "42" },
+  "createdAt": "2026-05-19T10:00:00Z",
+  "updatedAt": "2026-05-19T10:00:00Z"
+}
+```
+
+---
+
+## PATCH /api/v1/participants/{participantId}
+
+Update an existing participant. All fields are optional — only the fields you provide are changed.
+
+**Required role:** CRUD or higher
+
+<ParamField path="participantId" type="string (UUID)" required>
+  UUID of the participant to update.
+</ParamField>
+
+<ParamField body="licenseId" type="string (UUID)">
+  Reassign the participant to a different license.
+</ParamField>
+
+<ParamField body="firstName" type="string">
+  Updated first name. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  Updated last name. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Updated email address. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string">
+  Updated phone number. Maximum 120 characters.
+</ParamField>
+
+<ParamField body="extraFieldsJson" type="object">
+  Updated extra fields as a JSON object (not a string, unlike the POST body).
+</ParamField>
+
+```bash
+curl --request PATCH \
+  --url https://api.pitpath.de/api/v1/participants/p1a2r3t4-i5c6-7890-abcd-ef1234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "email": "jane.updated@example.com"
+  }'
+```
+
+Returns `200 OK` with the updated participant object.
+
+```json
+{
+  "id": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.updated@example.com",
+  "phoneNumber": "+49 151 00000000",
+  "extraFieldsJson": { "driverNumber": "42" },
+  "createdAt": "2026-05-19T10:00:00Z",
+  "updatedAt": "2026-05-19T11:45:00Z"
+}
+```

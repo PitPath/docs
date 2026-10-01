@@ -1,0 +1,114 @@
+---
+title: "Participants and Lap Times in Chrono"
+description: "Learn how participants represent drivers in your competition and how lap records capture timed runs with sector splits, validity flags, and linked car data."
+---
+
+Two resources sit at the heart of every result set in PitPath Chrono: **participants** (the drivers) and **laps** (the individual timed runs they complete). Understanding how they are modeled — and especially what the `valid` flag means — is essential before you build any leaderboard or export.
+
+---
+
+## Participants
+
+A participant is a person who competes in one or more events within your license. Each participant is linked to exactly one license via `licenseId`, so participant records are scoped to your organization and not shared across licenses.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Immutable identifier |
+| `licenseId` | UUID | The owning license |
+| `licenseDisplayName` | string | Denormalized for convenience |
+| `firstName` | string | Max 120 chars |
+| `lastName` | string | Max 120 chars |
+| `email` | string | Must be a valid email address |
+| `phoneNumber` | string | Max 120 chars |
+| `extraFieldsJson` | JSON object or `null` | Arbitrary key-value pairs for custom data |
+| `createdAt` | ISO 8601 | |
+| `updatedAt` | ISO 8601 | |
+
+```json title="POST /api/v1/participants — example response"
+{
+  "id": "p1000000-0000-0000-0000-000000000001",
+  "licenseId": "a1b2c3d4-0000-0000-0000-000000000001",
+  "licenseDisplayName": "ACME Racing League",
+  "firstName": "Sofia",
+  "lastName": "Hartmann",
+  "email": "sofia.hartmann@example.com",
+  "phoneNumber": "+49 30 12345678",
+  "extraFieldsJson": {
+    "memberNumber": "ARL-0042",
+    "nationality": "DEU",
+    "preferredSimRig": "Fanatec DD2"
+  },
+  "createdAt": "2024-09-01T08:00:00Z",
+  "updatedAt": "2024-09-01T08:00:00Z"
+}
+```
+
+### Idempotent participant creation
+
+Participant creation in Chrono is idempotent based on `licenseId`. If you `POST /api/v1/participants` with a `licenseId` that already has a participant record, Chrono returns the existing record rather than creating a duplicate. This means you can safely call the creation endpoint from your timing software on each session start without worrying about stale participant data.
+
+<Note>
+  The `extraFieldsJson` field accepts any valid JSON object. Use it to store data your application needs — driver ratings, membership IDs, preferred car class, or anything else — without requiring schema changes.
+</Note>
+
+---
+
+## Laps
+
+A lap is a single timed run through a track layout. Every lap is linked to a participant, the rig that captured it, the event it belongs to, the car being driven, and the specific track layout. Lap times are stored as integers in **milliseconds**.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Immutable identifier |
+| `participantId` | UUID | The driver |
+| `participantName` | string | `firstName + " " + lastName`, denormalized |
+| `rigId` | UUID | The rig that submitted this lap |
+| `rigName` | string | Denormalized rig name |
+| `eventId` | UUID | The event this lap belongs to |
+| `eventName` | string | Denormalized event name |
+| `sectors` | integer[] | Sector split times in milliseconds |
+| `totalTime` | integer | Total lap time in milliseconds |
+| `valid` | boolean | Whether this lap counts for results |
+| `car` | UUID | The car driven (Car ID) |
+| `trackId` | UUID | The track layout driven |
+| `trackDisplayName` | string | Denormalized layout name |
+| `createdAt` | ISO 8601 | When the lap was recorded |
+| `updatedAt` | ISO 8601 | |
+
+```json title="GET /api/v1/events/{eventId}/laps/{lapId} — example response"
+{
+  "id": "l1000000-0000-0000-0000-000000000001",
+  "participantId": "p1000000-0000-0000-0000-000000000001",
+  "participantName": "Sofia Hartmann",
+  "rigId": "b2c3d4e5-0000-0000-0000-000000000002",
+  "rigName": "Sim Bay 3",
+  "eventId": "e1000000-0000-0000-0000-000000000001",
+  "eventName": "ACME Autumn Championship — Round 3",
+  "sectors": [42381, 39104, 35812],
+  "totalTime": 117297,
+  "valid": true,
+  "car": "c1000000-0000-0000-0000-000000000001",
+  "trackId": "t1000000-0000-0000-0000-000000000001",
+  "trackDisplayName": "Spa-Francorchamps — Grand Prix",
+  "createdAt": "2024-11-10T18:47:23Z",
+  "updatedAt": "2024-11-10T18:47:23Z"
+}
+```
+
+### Sector times
+
+The `sectors` array contains one integer per sector, each in milliseconds. The sectors are ordered from the first sector of the lap to the last. The sum of all sector values should equal `totalTime`; if a sector was not crossed cleanly the value may be `0` or omitted by the timing software, but `totalTime` remains the authoritative lap duration.
+
+### The `valid` flag
+
+<Note>
+  Only laps where `valid` is `true` should be included in ranked results or personal-best calculations. A lap marked `valid: false` was recorded by Chrono but does not count for competition purposes.
+</Note>
+
+The `valid` flag is set by the rig at submission time. Common reasons a lap is marked invalid include:
+
+- **Track limits violation** — the simulator detected the car exceeded the allowed track boundaries.
+- **Incomplete lap** — the participant did not cross the finish line cleanly (pit entry, disconnect, crash before the line).
+- **Manual override** — a steward or your application explicitly invalidated the lap after review.
+
+When building a leaderboard, always filter on `valid: true`. When displaying a participant's full lap history or replaying telemetry, you may choose to show all laps regardless of validity — in that case surface the flag clearly so drivers understand which laps are ranked.

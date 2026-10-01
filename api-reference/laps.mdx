@@ -1,0 +1,352 @@
+---
+title: "Laps API — lap time records and sector splits"
+description: "Store and query individual lap records with millisecond-precision sector splits and total time, linked to a participant, rig, event, car, and track."
+---
+
+A lap record captures a single timed lap during a racing event. Each lap is linked to a participant, a timing rig, an event, a car, and a track. Sector times and the total time are all stored as integers in milliseconds. GET endpoints are public and require no authentication. Creating or updating laps requires a CRUD-level key.
+
+---
+
+## GET /api/v1/laps
+
+Return all lap records.
+
+**Authentication:** None required
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/laps
+```
+
+The response is an array of lap objects.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the lap.
+</ResponseField>
+
+<ResponseField name="participantId" type="string (UUID)" required>
+  UUID of the participant who set this lap.
+</ResponseField>
+
+<ResponseField name="participantName" type="string" required>
+  Full name of the participant (`firstName lastName`).
+</ResponseField>
+
+<ResponseField name="rigId" type="string (UUID)" required>
+  UUID of the timing rig that recorded this lap.
+</ResponseField>
+
+<ResponseField name="rigName" type="string" required>
+  Display name of the rig.
+</ResponseField>
+
+<ResponseField name="eventId" type="string (UUID)" required>
+  UUID of the event this lap belongs to.
+</ResponseField>
+
+<ResponseField name="eventName" type="string" required>
+  Display name of the event.
+</ResponseField>
+
+<ResponseField name="sectors" type="integer[]" required>
+  Ordered list of sector times in milliseconds.
+</ResponseField>
+
+<ResponseField name="totalTime" type="integer" required>
+  Total lap time in milliseconds.
+</ResponseField>
+
+<ResponseField name="valid" type="boolean" required>
+  Whether the lap is marked as valid (for example, not penalized or cut).
+</ResponseField>
+
+<ResponseField name="car" type="string (UUID)" required>
+  UUID of the car driven during this lap.
+</ResponseField>
+
+<ResponseField name="trackId" type="string (UUID)" required>
+  UUID of the track layout used.
+</ResponseField>
+
+<ResponseField name="trackDisplayName" type="string" required>
+  Human-readable name of the track layout.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the lap was recorded.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update.
+</ResponseField>
+
+```json
+[
+  {
+    "id": "l1a2p3r4-e5c6-7890-abcd-ef1234567890",
+    "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+    "participantName": "Jane Doe",
+    "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+    "rigName": "Rig A",
+    "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+    "eventName": "Spring Cup Round 1",
+    "sectors": [32450, 41200, 29800],
+    "totalTime": 103450,
+    "valid": true,
+    "car": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+    "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890",
+    "trackDisplayName": "Nürburgring GP",
+    "createdAt": "2026-06-01T14:35:00Z",
+    "updatedAt": "2026-06-01T14:35:00Z"
+  }
+]
+```
+
+---
+
+## GET /api/v1/laps/paged
+
+Return a paginated list of laps, sorted by `totalTime` ascending by default.
+
+**Authentication:** None required
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page number.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of laps per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="totalTime">
+  Field to sort by, optionally followed by `,asc` or `,desc`.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url 'https://api.pitpath.de/api/v1/laps/paged?page=0&size=20&sort=totalTime,asc'
+```
+
+Returns a page envelope with `content`, `totalElements`, `totalPages`, `number`, and `size`.
+
+```json
+{
+  "content": [
+    {
+      "id": "l1a2p3r4-e5c6-7890-abcd-ef1234567890",
+      "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+      "participantName": "Jane Doe",
+      "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+      "rigName": "Rig A",
+      "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+      "eventName": "Spring Cup Round 1",
+      "sectors": [32450, 41200, 29800],
+      "totalTime": 103450,
+      "valid": true,
+      "car": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+      "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890",
+      "trackDisplayName": "Nürburgring GP",
+      "createdAt": "2026-06-01T14:35:00Z",
+      "updatedAt": "2026-06-01T14:35:00Z"
+    }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
+```
+
+---
+
+## GET /api/v1/laps/{lapId}
+
+Return a single lap by UUID.
+
+**Authentication:** None required
+
+<ParamField path="lapId" type="string (UUID)" required>
+  UUID of the lap to retrieve.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/laps/l1a2p3r4-e5c6-7890-abcd-ef1234567890
+```
+
+Returns a single lap object with the same shape as items from `GET /api/v1/laps`.
+
+```json
+{
+  "id": "l1a2p3r4-e5c6-7890-abcd-ef1234567890",
+  "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "participantName": "Jane Doe",
+  "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "rigName": "Rig A",
+  "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "eventName": "Spring Cup Round 1",
+  "sectors": [32450, 41200, 29800],
+  "totalTime": 103450,
+  "valid": true,
+  "car": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+  "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890",
+  "trackDisplayName": "Nürburgring GP",
+  "createdAt": "2026-06-01T14:35:00Z",
+  "updatedAt": "2026-06-01T14:35:00Z"
+}
+```
+
+---
+
+## POST /api/v1/laps
+
+Record a new lap.
+
+**Required role:** CRUD or higher
+
+<ParamField body="participantId" type="string (UUID)" required>
+  UUID of the participant who set this lap.
+</ParamField>
+
+<ParamField body="rigId" type="string (UUID)" required>
+  UUID of the timing rig that recorded the lap.
+</ParamField>
+
+<ParamField body="eventId" type="string (UUID)" required>
+  UUID of the event this lap belongs to.
+</ParamField>
+
+<ParamField body="sectors" type="integer[]" required>
+  Ordered list of sector times in milliseconds. Each value must be ≥ 0.
+</ParamField>
+
+<ParamField body="totalTime" type="integer" required>
+  Total lap time in milliseconds. Must be ≥ 0.
+</ParamField>
+
+<ParamField body="valid" type="boolean" required>
+  Whether this lap should be counted as valid for results.
+</ParamField>
+
+<ParamField body="carId" type="string (UUID)" required>
+  UUID of the car driven during this lap.
+</ParamField>
+
+<ParamField body="trackId" type="string (UUID)" required>
+  UUID of the track layout.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/laps \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+    "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+    "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+    "sectors": [32450, 41200, 29800],
+    "totalTime": 103450,
+    "valid": true,
+    "carId": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+    "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890"
+  }'
+```
+
+Returns `201 Created` with the full lap object.
+
+```json
+{
+  "id": "l1a2p3r4-e5c6-7890-abcd-ef1234567890",
+  "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "participantName": "Jane Doe",
+  "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "rigName": "Rig A",
+  "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "eventName": "Spring Cup Round 1",
+  "sectors": [32450, 41200, 29800],
+  "totalTime": 103450,
+  "valid": true,
+  "car": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+  "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890",
+  "trackDisplayName": "Nürburgring GP",
+  "createdAt": "2026-06-01T14:35:00Z",
+  "updatedAt": "2026-06-01T14:35:00Z"
+}
+```
+
+---
+
+## PATCH /api/v1/laps/{lapId}
+
+Update an existing lap record. All fields are optional — only the fields you provide are changed.
+
+**Required role:** CRUD or higher
+
+<ParamField path="lapId" type="string (UUID)" required>
+  UUID of the lap to update.
+</ParamField>
+
+<ParamField body="participantId" type="string (UUID)">
+  Reassign the lap to a different participant.
+</ParamField>
+
+<ParamField body="rigId" type="string (UUID)">
+  Reassign the lap to a different rig.
+</ParamField>
+
+<ParamField body="eventId" type="string (UUID)">
+  Move the lap to a different event.
+</ParamField>
+
+<ParamField body="sectors" type="integer[]">
+  Updated sector times in milliseconds. Each value must be ≥ 0. Replaces the entire existing list.
+</ParamField>
+
+<ParamField body="totalTime" type="integer">
+  Updated total lap time in milliseconds. Must be ≥ 0.
+</ParamField>
+
+<ParamField body="valid" type="boolean">
+  Updated validity flag.
+</ParamField>
+
+<ParamField body="carId" type="string (UUID)">
+  Updated car UUID.
+</ParamField>
+
+<ParamField body="trackId" type="string (UUID)">
+  Updated track layout UUID.
+</ParamField>
+
+```bash
+curl --request PATCH \
+  --url https://api.pitpath.de/api/v1/laps/l1a2p3r4-e5c6-7890-abcd-ef1234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "valid": false
+  }'
+```
+
+Returns `200 OK` with the updated lap object.
+
+```json
+{
+  "id": "l1a2p3r4-e5c6-7890-abcd-ef1234567890",
+  "participantId": "p1a2r3t4-i5c6-7890-abcd-ef1234567890",
+  "participantName": "Jane Doe",
+  "rigId": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "rigName": "Rig A",
+  "eventId": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "eventName": "Spring Cup Round 1",
+  "sectors": [32450, 41200, 29800],
+  "totalTime": 103450,
+  "valid": false,
+  "car": "c1d2e3f4-a5b6-7890-abcd-ef1234567890",
+  "trackId": "t1u2v3w4-x5y6-7890-abcd-ef1234567890",
+  "trackDisplayName": "Nürburgring GP",
+  "createdAt": "2026-06-01T14:35:00Z",
+  "updatedAt": "2026-06-01T15:00:00Z"
+}
+```

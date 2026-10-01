@@ -1,0 +1,226 @@
+---
+title: "API Keys — create and manage auth credentials"
+description: "Issue, list, update, and revoke scoped API keys that authenticate requests to the PitPath Chrono timing service. Roles control what each key can access."
+---
+
+API keys are the primary authentication mechanism for PitPath Chrono. Every key belongs to a license and carries an access role that controls which endpoints it can call. When you create a key, the full token is returned exactly once — store it immediately. All subsequent reads return only the key's metadata and a short `keyPrefix` for identification.
+
+<Warning>
+  The full `token` value is only present in the `POST /api/v1/api-keys` response. It cannot be retrieved later. If you lose it, revoke the key and create a new one.
+</Warning>
+
+---
+
+## GET /api/v1/api-keys
+
+Return all API keys that belong to your current license.
+
+**Required role:** Any authenticated user with key-view permission
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/api-keys \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+The response is an array of API key metadata objects. The full token is **not** included.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the API key.
+</ResponseField>
+
+<ResponseField name="licenseId" type="string (UUID)" required>
+  UUID of the license this key belongs to.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Descriptive label for the key.
+</ResponseField>
+
+<ResponseField name="keyPrefix" type="string" required>
+  First few characters of the token, useful for identifying the key without exposing its full value.
+</ResponseField>
+
+<ResponseField name="role" type="string" required>
+  Access role granted to this key. One of `R`, `CR`, `CRUD`, or `ADMIN`.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether this key is currently active.
+</ResponseField>
+
+<ResponseField name="lastUsedAt" type="string (ISO 8601)">
+  Timestamp of the most recent request authenticated with this key. `null` if never used.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the key was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update to the key.
+</ResponseField>
+
+```json
+[
+  {
+    "id": "f7e8d9c0-b1a2-3456-cdef-012345678901",
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "timing-rig-key",
+    "keyPrefix": "ppk_a1b2",
+    "role": "CRUD",
+    "enabled": true,
+    "lastUsedAt": "2026-05-19T09:15:00Z",
+    "createdAt": "2026-05-01T08:00:00Z",
+    "updatedAt": "2026-05-01T08:00:00Z"
+  }
+]
+```
+
+---
+
+## POST /api/v1/api-keys
+
+Create a new API key for your current license. Returns the full token in a one-time response.
+
+**Required role:** Key-management permission
+
+<ParamField body="name" type="string" required>
+  A descriptive label for the key. Must be 3–120 characters and must not be blank.
+</ParamField>
+
+<ParamField body="role" type="string" required>
+  The access role to assign. One of `R`, `CR`, `CRUD`, or `ADMIN`.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/api-keys \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "name": "timing-rig-key",
+    "role": "CRUD"
+  }'
+```
+
+<ResponseField name="apiKey" type="object" required>
+  Metadata for the newly created key.
+  <Expandable title="apiKey properties">
+    <ResponseField name="id" type="string (UUID)" required>
+      Unique identifier for the API key.
+    </ResponseField>
+    <ResponseField name="licenseId" type="string (UUID)" required>
+      UUID of the owning license.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Descriptive label as provided in the request.
+    </ResponseField>
+    <ResponseField name="keyPrefix" type="string" required>
+      First few characters of the token for identification.
+    </ResponseField>
+    <ResponseField name="role" type="string" required>
+      Access role assigned to this key. One of `R`, `CR`, `CRUD`, or `ADMIN`.
+    </ResponseField>
+    <ResponseField name="enabled" type="boolean" required>
+      Whether the key is active. Always `true` at creation.
+    </ResponseField>
+    <ResponseField name="lastUsedAt" type="string (ISO 8601)">
+      Always `null` on a newly created key.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string (ISO 8601)" required>
+      Creation timestamp.
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string (ISO 8601)" required>
+      Last-updated timestamp.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="token" type="string" required>
+  The full API key token. This value is returned **only once** — store it in a secure location immediately.
+</ResponseField>
+
+```json
+{
+  "apiKey": {
+    "id": "f7e8d9c0-b1a2-3456-cdef-012345678901",
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "timing-rig-key",
+    "keyPrefix": "ppk_a1b2",
+    "role": "CRUD",
+    "enabled": true,
+    "lastUsedAt": null,
+    "createdAt": "2026-05-19T10:00:00Z",
+    "updatedAt": "2026-05-19T10:00:00Z"
+  },
+  "token": "ppk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
+}
+```
+
+---
+
+## PATCH /api/v1/api-keys/{apiKeyId}
+
+Update the name or role of an existing API key. All fields are optional — only the fields you include are changed.
+
+**Required role:** Key-management permission
+
+<ParamField path="apiKeyId" type="string (UUID)" required>
+  UUID of the API key to update.
+</ParamField>
+
+<ParamField body="name" type="string">
+  New label for the key. Must be 3–120 characters and must not be blank or whitespace-only.
+</ParamField>
+
+<ParamField body="role" type="string">
+  New access role to assign. One of `R`, `CR`, `CRUD`, or `ADMIN`.
+</ParamField>
+
+```bash
+curl --request PATCH \
+  --url https://api.pitpath.de/api/v1/api-keys/f7e8d9c0-b1a2-3456-cdef-012345678901 \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "name": "rig-key-renamed",
+    "role": "R"
+  }'
+```
+
+The response is the updated API key object with the same shape as a single item from `GET /api/v1/api-keys`. The full token is not included.
+
+```json
+{
+  "id": "f7e8d9c0-b1a2-3456-cdef-012345678901",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "rig-key-renamed",
+  "keyPrefix": "ppk_a1b2",
+  "role": "R",
+  "enabled": true,
+  "lastUsedAt": "2026-05-19T09:15:00Z",
+  "createdAt": "2026-05-01T08:00:00Z",
+  "updatedAt": "2026-05-19T10:10:00Z"
+}
+```
+
+---
+
+## DELETE /api/v1/api-keys/{apiKeyId}
+
+Permanently revoke an API key. Any in-flight requests using the key will fail immediately. This action cannot be undone.
+
+**Required role:** Key-management permission
+
+<ParamField path="apiKeyId" type="string (UUID)" required>
+  UUID of the API key to revoke.
+</ParamField>
+
+```bash
+curl --request DELETE \
+  --url https://api.pitpath.de/api/v1/api-keys/f7e8d9c0-b1a2-3456-cdef-012345678901 \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+Returns `204 No Content` on success with an empty body.

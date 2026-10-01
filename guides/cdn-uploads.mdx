@@ -1,0 +1,80 @@
+---
+title: "Upload assets to the PitPath Chrono CDN"
+description: "Learn how to upload logos, track images, brand assets, and other files to the PitPath Chrono CDN using multipart form data and the CDN endpoint."
+---
+
+PitPath Chrono provides a CDN upload endpoint for storing image assets — logos, SVG icons, track imagery, brand graphics, and more. Uploaded files are organized by type and referenced across the platform wherever visual assets are displayed. The endpoint accepts `multipart/form-data` with two parts: a JSON metadata object and the binary file.
+
+<Warning>
+  This endpoint requires the `CRUD` or `ADMIN` role. Requests made with a rig-scoped API key will be rejected with `403 Forbidden`.
+</Warning>
+
+<Steps>
+  <Step title="Choose a CDN type">
+    Every upload is classified by a `type` that determines the storage path prefix in the CDN. Use the value that matches the purpose of the file you are uploading:
+
+    | Type | Description |
+    |---|---|
+    | `BRAND` | Brand or sponsor logos and identity assets |
+    | `CLASS` | Car class badges or category icons |
+    | `COUNTRY` | Country flags or regional icons |
+    | `LOGO` | General logos (simulator logos, platform logos) |
+    | `TRACK` | Track maps, circuit diagrams, or venue imagery |
+
+    The final CDN path for your file will be `{type}/{targetName}` — for example, uploading with `type: "TRACK"` and `targetName: "spa-francorchamps.svg"` stores the file at `TRACK/spa-francorchamps.svg`.
+  </Step>
+
+  <Step title="Upload the file">
+    Send a `POST` request to `/api/v1/cdn` as `multipart/form-data`. The request must include exactly two parts:
+
+    - `cdnRequest` — a JSON object with `type` and `targetName`, sent with content type `application/json`
+    - `cdnFile` — the binary file to upload
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `cdnRequest.type` | enum | Yes | One of `BRAND`, `CLASS`, `COUNTRY`, `LOGO`, `TRACK` |
+    | `cdnRequest.targetName` | string | Yes | Filename or sub-path within the type directory (e.g. `spa-francorchamps.svg`) |
+    | `cdnFile` | binary | Yes | The file to upload |
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.pitpath.de/api/v1/cdn \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -F 'cdnRequest={"type":"TRACK","targetName":"spa-francorchamps.svg"};type=application/json' \
+      -F 'cdnFile=@/path/to/spa-francorchamps.svg'
+    ```
+
+    </CodeGroup>
+
+    A successful upload returns `201 Created` with the plain text body `"Success"`. If the upload fails (for example, due to a storage error), the response is `400 Bad Request` with the body `"Failed"`.
+
+    ```bash
+    # Example: upload a brand logo
+    curl -X POST https://api.pitpath.de/api/v1/cdn \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -F 'cdnRequest={"type":"BRAND","targetName":"redbull-logo.png"};type=application/json' \
+      -F 'cdnFile=@/path/to/redbull-logo.png'
+
+    # Example: upload a car class badge
+    curl -X POST https://api.pitpath.de/api/v1/cdn \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -F 'cdnRequest={"type":"CLASS","targetName":"gt3-badge.svg"};type=application/json' \
+      -F 'cdnFile=@/path/to/gt3-badge.svg'
+    ```
+  </Step>
+
+  <Step title="Reference the uploaded asset">
+    After a successful upload, the file is available in the CDN at the path formed by `{type}/{targetName}`. Reference this path in the relevant resource — for example, set a brand's logo field to `BRAND/redbull-logo.png` or a track's image field to `TRACK/spa-francorchamps.svg`.
+
+    The exact mechanism for linking CDN assets to Chrono resources (cars, tracks, brands, simulators) is configured through their respective create or update endpoints.
+  </Step>
+</Steps>
+
+<Note>
+  `targetName` can include forward slashes to create sub-directories within the type prefix — for example `"2026/spa-francorchamps.svg"` would be stored at `TRACK/2026/spa-francorchamps.svg`. Use sub-paths to keep assets organized when you have many files of the same type.
+</Note>
+
+<Warning>
+  The CDN endpoint does not enforce a specific file size limit or MIME type at the API layer, but the underlying storage backend may reject files that are too large or of unsupported types. Keep image files optimized: use SVG for vector graphics such as logos and track maps, and use compressed PNG or WebP for photographic content. Avoid uploading unoptimized originals.
+</Warning>

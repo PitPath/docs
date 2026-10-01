@@ -1,0 +1,372 @@
+---
+title: "Rigs API — timing hardware registration"
+description: "Register physical timing rigs using a signed license file, look them up by hardware ID, and manage rig metadata and availability across events."
+---
+
+A rig represents a physical timing station that records lap data during a racing event. Rigs self-register using a hardware identifier and a signed license file obtained from `POST /api/v1/licenses/{licenseId}/file`. On successful registration, the server returns a bootstrapped API key for the rig to use in subsequent requests. All GET endpoints require authentication. Only PATCH requires a higher CRUD-level role; POST is open to any authenticated caller.
+
+---
+
+## GET /api/v1/rigs
+
+Return all enabled rigs.
+
+**Required role:** Any authenticated user
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/rigs \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+The response is an array of rig objects.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the rig.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the rig.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Optional description of the rig's location or purpose.
+</ResponseField>
+
+<ResponseField name="hardwareId" type="string" required>
+  Unique hardware identifier supplied by the device.
+</ResponseField>
+
+<ResponseField name="licenseId" type="string (UUID)" required>
+  UUID of the license this rig is registered under.
+</ResponseField>
+
+<ResponseField name="licenseDisplayName" type="string" required>
+  Human-readable name of the associated license.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether this rig is available for assignment to events.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the rig was registered.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update.
+</ResponseField>
+
+```json
+[
+  {
+    "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+    "name": "Rig A",
+    "description": "Pit lane timing station",
+    "hardwareId": "PP-RIG-0042",
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "licenseDisplayName": "Acme Racing Team",
+    "enabled": true,
+    "createdAt": "2026-05-10T09:00:00Z",
+    "updatedAt": "2026-05-10T09:00:00Z"
+  }
+]
+```
+
+---
+
+## GET /api/v1/rigs/paged
+
+Return a paginated list of enabled rigs, sorted by `name` ascending by default.
+
+**Required role:** Any authenticated user
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page number.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of rigs per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="name">
+  Field to sort by, optionally followed by `,asc` or `,desc`.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url 'https://api.pitpath.de/api/v1/rigs/paged?page=0&size=20&sort=name,asc' \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+Returns a page envelope with `content`, `totalElements`, `totalPages`, `number`, and `size`.
+
+```json
+{
+  "content": [
+    {
+      "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+      "name": "Rig A",
+      "description": "Pit lane timing station",
+      "hardwareId": "PP-RIG-0042",
+      "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "licenseDisplayName": "Acme Racing Team",
+      "enabled": true,
+      "createdAt": "2026-05-10T09:00:00Z",
+      "updatedAt": "2026-05-10T09:00:00Z"
+    }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
+```
+
+---
+
+## GET /api/v1/rigs/{rigId}
+
+Return a single rig by UUID.
+
+**Required role:** Any authenticated user
+
+<ParamField path="rigId" type="string (UUID)" required>
+  UUID of the rig to retrieve.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/rigs/r1i2g3h4-i5j6-7890-abcd-ef1234567890 \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+Returns a single rig object with the same shape as items from `GET /api/v1/rigs`.
+
+```json
+{
+  "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "name": "Rig A",
+  "description": "Pit lane timing station",
+  "hardwareId": "PP-RIG-0042",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "enabled": true,
+  "createdAt": "2026-05-10T09:00:00Z",
+  "updatedAt": "2026-05-10T09:00:00Z"
+}
+```
+
+---
+
+## GET /api/v1/rigs/hardwareId/{hardwareId}
+
+Look up a rig by its hardware identifier. This is the primary lookup used by timing devices to find their own registration record.
+
+**Required role:** Any authenticated user
+
+<ParamField path="hardwareId" type="string" required>
+  The hardware identifier string as reported by the device.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/rigs/hardwareId/PP-RIG-0042 \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+Returns a single rig object with the same shape as `GET /api/v1/rigs/{rigId}`.
+
+```json
+{
+  "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "name": "Rig A",
+  "description": "Pit lane timing station",
+  "hardwareId": "PP-RIG-0042",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "enabled": true,
+  "createdAt": "2026-05-10T09:00:00Z",
+  "updatedAt": "2026-05-10T09:00:00Z"
+}
+```
+
+---
+
+## POST /api/v1/rigs
+
+Register a new timing rig. The rig identifies itself with a hardware ID and proves ownership by submitting a signed license file issued via `POST /api/v1/licenses/{licenseId}/file`. On success, the server registers the rig and returns a fresh API key for the device to use.
+
+**Required role:** Any authenticated user
+
+<ParamField body="hardwareId" type="string" required>
+  Unique identifier reported by the hardware device. Maximum 255 characters.
+</ParamField>
+
+<ParamField body="licenseFile" type="object" required>
+  Signed license token obtained from `POST /api/v1/licenses/{licenseId}/file`.
+  <Expandable title="licenseFile properties">
+    <ParamField body="licenseFile.licenseId" type="string (UUID)" required>
+      UUID of the license the file was issued for.
+    </ParamField>
+    <ParamField body="licenseFile.licenseKey" type="string" required>
+      License key embedded in the signed file.
+    </ParamField>
+    <ParamField body="licenseFile.issuedAt" type="string (ISO 8601)" required>
+      Timestamp when the file was issued.
+    </ParamField>
+    <ParamField body="licenseFile.signature" type="string" required>
+      Cryptographic signature verifying file authenticity.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/rigs \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "hardwareId": "PP-RIG-0042",
+    "licenseFile": {
+      "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "licenseKey": "lic_a1b2c3d4e5f6",
+      "issuedAt": "2026-05-19T10:05:00Z",
+      "signature": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    }
+  }'
+```
+
+<ResponseField name="rig" type="object" required>
+  The registered rig record.
+  <Expandable title="rig properties">
+    <ResponseField name="id" type="string (UUID)" required>
+      Unique identifier for the rig.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Display name assigned to the rig.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Optional description.
+    </ResponseField>
+    <ResponseField name="hardwareId" type="string" required>
+      Hardware identifier as submitted.
+    </ResponseField>
+    <ResponseField name="licenseId" type="string (UUID)" required>
+      UUID of the owning license.
+    </ResponseField>
+    <ResponseField name="licenseDisplayName" type="string" required>
+      Human-readable license name.
+    </ResponseField>
+    <ResponseField name="enabled" type="boolean" required>
+      Whether the rig is active.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string (ISO 8601)" required>
+      Registration timestamp.
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string (ISO 8601)" required>
+      Last-updated timestamp.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="apiKey" type="object" required>
+  A bootstrapped API key for the rig to use in subsequent requests. The full `token` is only present in this response.
+  <Expandable title="apiKey properties">
+    <ResponseField name="apiKey" type="object" required>
+      API key metadata with the same shape as `GET /api/v1/api-keys` items.
+    </ResponseField>
+    <ResponseField name="token" type="string" required>
+      Full API key token. Store this securely — it cannot be retrieved again.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json
+{
+  "rig": {
+    "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+    "name": "Rig A",
+    "description": null,
+    "hardwareId": "PP-RIG-0042",
+    "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "licenseDisplayName": "Acme Racing Team",
+    "enabled": true,
+    "createdAt": "2026-05-19T10:10:00Z",
+    "updatedAt": "2026-05-19T10:10:00Z"
+  },
+  "apiKey": {
+    "apiKey": {
+      "id": "k1e2y3i4-d5f6-7890-abcd-ef1234567890",
+      "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "rig-PP-RIG-0042",
+      "keyPrefix": "ppk_r1i2",
+      "role": "CRUD",
+      "enabled": true,
+      "lastUsedAt": null,
+      "createdAt": "2026-05-19T10:10:00Z",
+      "updatedAt": "2026-05-19T10:10:00Z"
+    },
+    "token": "ppk_r1i2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0"
+  }
+}
+```
+
+---
+
+## PATCH /api/v1/rigs/{rigId}
+
+Update an existing rig's metadata. All fields are optional — only the fields you provide are changed.
+
+**Required role:** CRUD or higher
+
+<ParamField path="rigId" type="string (UUID)" required>
+  UUID of the rig to update.
+</ParamField>
+
+<ParamField body="name" type="string">
+  New display name. Must be 2–120 characters.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description. Maximum 255 characters.
+</ParamField>
+
+<ParamField body="hardwareId" type="string">
+  Updated hardware identifier. Maximum 255 characters.
+</ParamField>
+
+<ParamField body="licenseId" type="string (UUID)">
+  Reassign the rig to a different license.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Enable or disable the rig.
+</ParamField>
+
+```bash
+curl --request PATCH \
+  --url https://api.pitpath.de/api/v1/rigs/r1i2g3h4-i5j6-7890-abcd-ef1234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "name": "Rig A — Pit Lane",
+    "description": "Timing station at pit lane entry"
+  }'
+```
+
+Returns `200 OK` with the updated rig object.
+
+```json
+{
+  "id": "r1i2g3h4-i5j6-7890-abcd-ef1234567890",
+  "name": "Rig A — Pit Lane",
+  "description": "Timing station at pit lane entry",
+  "hardwareId": "PP-RIG-0042",
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseDisplayName": "Acme Racing Team",
+  "enabled": true,
+  "createdAt": "2026-05-10T09:00:00Z",
+  "updatedAt": "2026-05-19T11:00:00Z"
+}
+```

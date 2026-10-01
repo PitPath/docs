@@ -1,0 +1,110 @@
+---
+title: "Add and manage participants in your events"
+description: "Learn how to create participants with license bindings and custom fields, query the participant list, and handle idempotent registration behavior."
+---
+
+A participant in PitPath Chrono represents a driver or competitor. Participants are bound to a license and identified by their `licenseId`. Creating a participant is idempotent — if a participant with the given `licenseId` already exists, the API returns the existing record rather than creating a duplicate. This makes it safe to call the create endpoint at sign-up time without checking for existence first.
+
+<Steps>
+  <Step title="Create a participant">
+    Send a `POST` request to `/api/v1/participants`. This endpoint requires the `CRUD` or `ADMIN` role.
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `licenseId` | UUID | Yes | License to bind this participant to. Acts as the unique identifier for deduplication. |
+    | `firstName` | string (max 120) | Yes | Participant's first name |
+    | `lastName` | string (max 120) | Yes | Participant's last name |
+    | `email` | string (max 120) | Yes | Valid email address |
+    | `phoneNumber` | string (max 120) | Yes | Contact phone number |
+    | `extraFieldsJson` | string | No | JSON string containing any custom form fields collected at sign-up |
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.pitpath.de/api/v1/participants \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "licenseId": "a1b2c3d4-0000-0000-0000-111111111111",
+        "firstName": "Max",
+        "lastName": "Verstappen",
+        "email": "max@example.com",
+        "phoneNumber": "+31612345678",
+        "extraFieldsJson": "{\"teamName\": \"Red Bull Racing\", \"iRatingConsent\": true}"
+      }'
+    ```
+
+    </CodeGroup>
+
+    The response shape is the same whether the participant was newly created (`201 Created`) or already existed (`200 OK`):
+
+    ```json
+    {
+      "id": "aaaaaaaa-1111-2222-3333-444444444444",
+      "licenseId": "a1b2c3d4-0000-0000-0000-111111111111",
+      "licenseDisplayName": "PitPath Pro License",
+      "firstName": "Max",
+      "lastName": "Verstappen",
+      "email": "max@example.com",
+      "phoneNumber": "+31612345678",
+      "extraFieldsJson": {
+        "teamName": "Red Bull Racing",
+        "iRatingConsent": true
+      },
+      "createdAt": "2026-05-19T10:00:00Z",
+      "updatedAt": "2026-05-19T10:00:00Z"
+    }
+    ```
+
+    <Note>
+      The `POST /api/v1/participants` endpoint is idempotent on `licenseId`. If a participant with the same `licenseId` already exists, the API returns `200 OK` with the existing record — it does not create a duplicate and does not update any fields. Use `PATCH /api/v1/participants/{participantId}` if you need to update an existing participant's details.
+    </Note>
+  </Step>
+
+  <Step title="Query participants">
+    Retrieve all participants or use the paginated endpoint for large lists. By default the paged endpoint sorts by `lastName`.
+
+    ```bash
+    # All participants (unbounded)
+    curl https://api.pitpath.de/api/v1/participants \
+      -H "X-API-Key: YOUR_API_KEY"
+
+    # Paginated, sorted by last name
+    curl "https://api.pitpath.de/api/v1/participants/paged?page=0&size=20&sort=lastName" \
+      -H "X-API-Key: YOUR_API_KEY"
+
+    # Single participant by ID
+    curl https://api.pitpath.de/api/v1/participants/aaaaaaaa-1111-2222-3333-444444444444 \
+      -H "X-API-Key: YOUR_API_KEY"
+    ```
+  </Step>
+
+  <Step title="Update a participant">
+    Use `PATCH /api/v1/participants/{participantId}` to change a participant's details. This endpoint requires the `CRUD` or `ADMIN` role. All fields are optional — only the fields you include are updated.
+
+    | Field | Type | Description |
+    |---|---|---|
+    | `licenseId` | UUID | Rebind participant to a different license |
+    | `firstName` | string (max 120) | Updated first name |
+    | `lastName` | string (max 120) | Updated last name |
+    | `email` | string (max 120) | Updated email address |
+    | `phoneNumber` | string (max 120) | Updated phone number |
+    | `extraFieldsJson` | string | Updated custom fields as a JSON string |
+
+    ```bash
+    curl -X PATCH https://api.pitpath.de/api/v1/participants/aaaaaaaa-1111-2222-3333-444444444444 \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "max.updated@example.com",
+        "extraFieldsJson": "{\"teamName\": \"Oracle Red Bull Racing\", \"iRatingConsent\": true}"
+      }'
+    ```
+  </Step>
+
+  <Step title="Configure custom sign-up fields">
+    The `extraFieldsJson` field accepts a JSON string containing any key-value data you collect from participants at registration time — team names, driver ratings, consent flags, or other event-specific information. The value is stored and returned as a parsed JSON object.
+
+    To define which custom fields appear in your sign-up forms, use the signup-fields endpoint and configure them per event. You can also manage API keys and access roles for your sign-up integration from the [API keys configuration](/configuration/api-keys) page.
+  </Step>
+</Steps>

@@ -1,0 +1,126 @@
+---
+title: "Register a timing rig with PitPath Chrono"
+description: "Learn how to register a hardware timing rig, obtain a signed license file, and store the rig ID for use in events and lap recording."
+---
+
+A timing rig is the physical or virtual hardware unit that captures lap data in PitPath Chrono. Before a rig can participate in events or record laps, you must register it against a valid license. Registration returns a rig ID and a provisioned API key scoped to that rig.
+
+<Steps>
+  <Step title="Obtain your signed license file">
+    Every rig registration must be backed by a license. Call `POST /api/v1/licenses/{licenseId}/file` to retrieve a signed license token for the license you want to bind to the rig. The response contains the fields you will pass as `licenseFile` in the next step.
+
+    ```bash
+    curl -X POST https://api.pitpath.de/api/v1/licenses/a1b2c3d4-0000-0000-0000-111111111111/file \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json"
+    ```
+
+    The response includes a `licenseId`, `licenseKey`, `issuedAt` timestamp, and a cryptographic `signature`. Keep all four values — you need them in the next step.
+  </Step>
+
+  <Step title="Register the rig">
+    Send a `POST` request to `/api/v1/rigs` with your hardware identifier and the signed license file object.
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `hardwareId` | string (max 255) | Yes | Unique identifier for your hardware, e.g. a MAC address or serial number |
+    | `licenseFile` | object | Yes | Signed license token returned by the license file endpoint |
+    | `licenseFile.licenseId` | UUID | Yes | ID of the license being activated |
+    | `licenseFile.licenseKey` | string | Yes | License key string from the signed token |
+    | `licenseFile.issuedAt` | ISO-8601 instant | Yes | Timestamp when the license file was issued |
+    | `licenseFile.signature` | string | Yes | Cryptographic signature verifying the license file |
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.pitpath.de/api/v1/rigs \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "hardwareId": "AA:BB:CC:DD:EE:FF",
+        "licenseFile": {
+          "licenseId": "a1b2c3d4-0000-0000-0000-111111111111",
+          "licenseKey": "PITPATH-XXXX-YYYY-ZZZZ",
+          "issuedAt": "2026-05-01T10:00:00Z",
+          "signature": "MEYCIQDexampleSignatureBase64=="
+        }
+      }'
+    ```
+
+    </CodeGroup>
+
+    A `201 Created` response returns both the new rig and a provisioned API key:
+
+    ```json
+    {
+      "rig": {
+        "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "name": null,
+        "description": null,
+        "hardwareId": "AA:BB:CC:DD:EE:FF",
+        "licenseId": "a1b2c3d4-0000-0000-0000-111111111111",
+        "licenseDisplayName": "PitPath Pro License",
+        "enabled": true,
+        "createdAt": "2026-05-19T12:00:00Z",
+        "updatedAt": "2026-05-19T12:00:00Z"
+      },
+      "apiKey": {
+        "apiKey": {
+          "id": "c3d47a10-1234-5678-abcd-ef0123456789",
+          "licenseId": "a1b2c3d4-0000-0000-0000-111111111111",
+          "name": "Rig key — AA:BB:CC:DD:EE:FF",
+          "keyPrefix": "pp_rig_",
+          "role": "CR",
+          "enabled": true,
+          "lastUsedAt": null,
+          "createdAt": "2026-05-19T12:00:00Z",
+          "updatedAt": "2026-05-19T12:00:00Z"
+        },
+        "token": "pp_rig_FULL_SECRET_TOKEN_SHOWN_ONCE"
+      }
+    }
+    ```
+
+    <Note>
+      The `token` inside `apiKey` is shown only once at registration time. Store it securely — you cannot retrieve it again. This token is what the rig hardware uses to authenticate subsequent requests.
+    </Note>
+  </Step>
+
+  <Step title="Store the rig ID">
+    Copy the `rig.id` UUID from the response. You will need it when:
+
+    - Creating or updating events (the `rigIds` array)
+    - Recording laps (`rigId` field on each lap)
+    - Querying a single rig with `GET /api/v1/rigs/{rigId}`
+
+    You can also look up a rig at any time by its hardware identifier using `GET /api/v1/rigs/hardwareId/{hardwareId}`.
+  </Step>
+
+  <Step title="Update the rig name and description (optional)">
+    After registration the rig has no human-readable name. Give it one with a `PATCH` request. All fields are optional — only the fields you include are updated.
+
+    | Field | Type | Description |
+    |---|---|---|
+    | `name` | string (2–120) | Display name for the rig |
+    | `description` | string (max 255) | Free-text description |
+    | `hardwareId` | string (max 255) | Change the hardware identifier |
+    | `licenseId` | UUID | Rebind to a different license |
+    | `enabled` | boolean | Enable or disable the rig |
+
+    ```bash
+    curl -X PATCH https://api.pitpath.de/api/v1/rigs/f47ac10b-58cc-4372-a567-0e02b2c3d479 \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Pit Lane Rig 1",
+        "description": "Primary timing rig at the start/finish line"
+      }'
+    ```
+
+    The response is the updated rig object with all current field values.
+  </Step>
+</Steps>
+
+<Note>
+  `hardwareId` must be globally unique across all rigs in your license. Attempting to register a second rig with the same `hardwareId` will return a `409 Conflict` error. Use a value that is tied to the physical device — such as a network interface MAC address, motherboard serial number, or a UUID you generate and persist to the device at first boot.
+</Note>

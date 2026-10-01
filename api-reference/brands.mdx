@@ -1,0 +1,262 @@
+---
+title: "Brands API — sponsors and partner management"
+description: "Create and manage event sponsors and commercial partners. Brands can be associated with events and carry logo and website metadata."
+---
+
+The Brands API lets you manage the sponsors and commercial partners that appear alongside PitPath Chrono events. A brand carries a name, a website URL, and a logo — which can be stored as a CDN asset or referenced by an external URL. GET endpoints are public. Creating or updating records requires a CRUD+ role.
+
+## Brand object
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the brand.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Brand name (2–120 characters).
+</ResponseField>
+
+<ResponseField name="websiteUrl" type="string" required>
+  Brand website URL (max 255 characters).
+</ResponseField>
+
+<ResponseField name="logo" type="string" required>
+  CDN asset key or external URL for the brand logo (max 255 characters).
+</ResponseField>
+
+<ResponseField name="logoScalePercent" type="number">
+  Percentage by which to scale the logo when displayed alongside other brand logos. Defaults to `100`.
+</ResponseField>
+
+<ResponseField name="logoUrl" type="boolean" required>
+  When `true`, the `logo` field is treated as an external URL rather than a CDN asset key.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  Timestamp when the brand was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)">
+  Timestamp of the most recent update.
+</ResponseField>
+
+---
+
+## List brands
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns all brands as an unordered list.
+
+```
+GET /api/v1/brands
+```
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/brands \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+**Example response**
+
+```json 200
+[
+  {
+    "id": "a9b8c7d6-e5f4-3210-9876-fedcba543210",
+    "name": "Fanatec",
+    "websiteUrl": "https://fanatec.com",
+    "logo": "BRAND/fanatec.svg",
+    "logoScalePercent": 90,
+    "logoUrl": false,
+    "createdAt": "2024-03-01T09:00:00Z",
+    "updatedAt": "2024-03-01T09:00:00Z"
+  }
+]
+```
+
+---
+
+## List brands (paged)
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns brands in a paginated response. Default page size is 20, sorted by `name`.
+
+```
+GET /api/v1/brands/paged
+```
+
+**Query parameters**
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="name">
+  Field and direction, e.g. `name,asc`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl "https://chrono.pitpath.de/api/v1/brands/paged?page=0&size=20&sort=name,asc" \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Get a brand
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns a single brand by its UUID.
+
+```
+GET /api/v1/brands/{brandId}
+```
+
+**Path parameters**
+
+<ParamField path="brandId" type="string (UUID)" required>
+  The UUID of the brand to retrieve.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/brands/a9b8c7d6-e5f4-3210-9876-fedcba543210 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Create a brand
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Creates a new brand. Returns `201 Created` with a `Location` header pointing to the new resource.
+
+```
+POST /api/v1/brands
+```
+
+**Request body**
+
+<ParamField body="name" type="string" required>
+  Brand name (2–120 characters).
+</ParamField>
+
+<ParamField body="websiteUrl" type="string" required>
+  Brand website URL (max 255 characters).
+</ParamField>
+
+<ParamField body="logo" type="string" required>
+  CDN asset key or external URL for the brand logo (max 255 characters). Set `logoUrl` to `true` if you are supplying an external URL rather than a CDN key.
+</ParamField>
+
+<ParamField body="logoScalePercentage" type="number">
+  Scaling percentage for the logo in composite displays. Defaults to `100`.
+</ParamField>
+
+<ParamField body="logoUrl" type="boolean">
+  Set to `true` when `logo` is an external URL instead of a CDN asset key. Defaults to `false`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/brands \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Fanatec",
+    "websiteUrl": "https://fanatec.com",
+    "logo": "BRAND/fanatec.svg",
+    "logoScalePercentage": 90,
+    "logoUrl": false
+  }'
+```
+
+**Example response**
+
+```json 201
+{
+  "id": "a9b8c7d6-e5f4-3210-9876-fedcba543210",
+  "name": "Fanatec",
+  "websiteUrl": "https://fanatec.com",
+  "logo": "BRAND/fanatec.svg",
+  "logoScalePercent": 90,
+  "logoUrl": false,
+  "createdAt": "2024-03-01T09:00:00Z",
+  "updatedAt": "2024-03-01T09:00:00Z"
+}
+```
+
+---
+
+## Update a brand
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Partially updates an existing brand. Only the fields you include are changed.
+
+```
+PATCH /api/v1/brands/{brandId}
+```
+
+**Path parameters**
+
+<ParamField path="brandId" type="string (UUID)" required>
+  The UUID of the brand to update.
+</ParamField>
+
+**Request body**
+
+<ParamField body="name" type="string">
+  New brand name (2–120 characters).
+</ParamField>
+
+<ParamField body="websiteUrl" type="string">
+  New website URL (max 255 characters).
+</ParamField>
+
+<ParamField body="logo" type="string">
+  New CDN asset key or external URL (max 255 characters).
+</ParamField>
+
+<ParamField body="logoScalePercentage" type="number">
+  New scaling percentage for the logo.
+</ParamField>
+
+<ParamField body="logoUrl" type="boolean">
+  Update whether `logo` is an external URL (`true`) or a CDN key (`false`).
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X PATCH https://chrono.pitpath.de/api/v1/brands/a9b8c7d6-e5f4-3210-9876-fedcba543210 \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"logoScalePercentage": 80}'
+```
+
+**Example response**
+
+```json 200
+{
+  "id": "a9b8c7d6-e5f4-3210-9876-fedcba543210",
+  "name": "Fanatec",
+  "websiteUrl": "https://fanatec.com",
+  "logo": "BRAND/fanatec.svg",
+  "logoScalePercent": 80,
+  "logoUrl": false,
+  "createdAt": "2024-03-01T09:00:00Z",
+  "updatedAt": "2024-07-15T11:30:00Z"
+}
+```

@@ -1,0 +1,102 @@
+---
+title: "PitPath Chrono REST API overview"
+description: "Learn how to connect to the Chrono API, authenticate requests, and discover all available resources for sim racing timing and results."
+---
+
+The PitPath Chrono API gives you programmatic access to sim racing timing data, event management, lap records, competitor registration, and hardware configuration. All communication goes over HTTPS, and every request and response body uses JSON.
+
+## Base URL
+
+All resource endpoints are nested under `/api/v1/`:
+
+```
+https://your-instance/api/v1/
+```
+
+The API version is also returned in the `API-Version` response header (value: `1.0`).
+
+## Authentication
+
+Most endpoints require you to pass an API key in the `X-API-Key` request header.
+
+```http
+X-API-Key: <your-api-key>
+```
+
+The following GET endpoints are public and do not require an API key:
+
+- `GET /api/v1/events`
+- `GET /api/v1/tracks`
+- `GET /api/v1/cars`
+- `GET /api/v1/simulators`
+- `GET /api/v1/brands`
+- `GET /api/v1/signup-fields`
+
+All other endpoints — including rigs, laps, participants, api-keys, and licenses — require a valid `X-API-Key` header. Requests without a key or with an invalid key return `401 Unauthorized`.
+
+<Tip>
+You can manage your API keys through the `/api/v1/api-keys` resource. See the API Keys reference for details on creating and revoking keys.
+</Tip>
+
+## Content type
+
+Set `Content-Type: application/json` on all requests that include a body. The API always returns `application/json` response bodies.
+
+## Available resources
+
+| Resource | Endpoint | Description |
+|---|---|---|
+| Licenses | `/api/v1/licenses` | Organization credentials and subscription details |
+| API Keys | `/api/v1/api-keys` | Authentication keys tied to your license |
+| Events | `/api/v1/events` | Racing events and sessions |
+| Laps | `/api/v1/laps` | Lap time records for a given event |
+| Participants | `/api/v1/participants` | Competitors registered to an event |
+| Rigs | `/api/v1/rigs` | Timing hardware units |
+| Tracks | `/api/v1/tracks` | Race track catalog |
+| Cars | `/api/v1/cars` | Vehicle catalog |
+| Simulators | `/api/v1/simulators` | Sim software catalog |
+| Brands | `/api/v1/brands` | Sponsor and partner brands |
+| Signup Fields | `/api/v1/signup-fields` | Custom fields for event registration forms |
+| CDN | `/api/v1/cdn` | Asset uploads and media management |
+
+## Example request
+
+The following example retrieves all events using curl:
+
+```bash
+curl https://your-instance/api/v1/events \
+  -H "Accept: application/json"
+```
+
+For an endpoint that requires authentication, add the `X-API-Key` header:
+
+```bash
+curl https://your-instance/api/v1/laps \
+  -H "Accept: application/json" \
+  -H "X-API-Key: <your-api-key>"
+```
+
+## Health check
+
+Use the health endpoint to verify that the service is running. This endpoint does not require authentication.
+
+```bash
+curl https://your-instance/actuator/health
+```
+
+A healthy instance returns:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+## OpenAPI and Swagger UI
+
+The machine-readable OpenAPI specification is available at `/api-docs`. You can explore and test all endpoints interactively through the Swagger UI at `/swagger-ui`.
+
+| URL | Description |
+|---|---|
+| `/api-docs` | OpenAPI 3 JSON specification |
+| `/swagger-ui` | Interactive Swagger UI |

@@ -1,0 +1,53 @@
+---
+title: "API key access roles and permissions"
+description: "Understand the four access roles — R, CR, CRUD, and ADMIN — and choose the right permission level for each API key in your PitPath Chrono integration."
+---
+
+Every API key in PitPath Chrono carries an access role that determines what the key is allowed to do. Roles follow a strict hierarchy: each level is a superset of the level below it. Assign the least permissive role that satisfies your use case.
+
+## Role overview
+
+| Role  | Read data | Create resources | Update / delete | Manage API keys | Manage licenses |
+|-------|-----------|------------------|-----------------|-----------------|-----------------|
+| R     | ✓         | ✗                | ✗               | ✗               | ✗               |
+| CR    | ✓         | ✓                | ✗               | ✓               | ✗               |
+| CRUD  | ✓         | ✓                | ✓               | ✓               | ✗               |
+| ADMIN | ✓         | ✓                | ✓               | ✓               | ✓               |
+
+### R — read-only
+
+The `R` role allows a key to read any resource (laps, events, tracks, participants, and so on) but cannot create, modify, or delete anything. Use `R` for keys that power public-facing displays, leaderboards, or read-only widgets.
+
+### CR — create and read
+
+The `CR` role can read all resources and create new ones, but cannot update or delete existing records. Keys with `CR` can also create additional API keys at or below the `CR` level.
+
+### CRUD — full resource management
+
+The `CRUD` role adds the ability to update and delete resources on top of everything `CR` can do. Use `CRUD` for integrations that manage the full lifecycle of events, laps, and participants. Keys with `CRUD` can create API keys at or below the `CRUD` level but cannot create `ADMIN` keys.
+
+### ADMIN — full access
+
+The `ADMIN` role has unrestricted access, including license management and the ability to create API keys at any role level. An `ADMIN` key is typically your primary integration key that provisions all other keys.
+
+## Role hierarchy and key creation
+
+You can only assign roles that are at or below your own role level. The rules are:
+
+- An `ADMIN` key can assign any role (`R`, `CR`, `CRUD`, or `ADMIN`).
+- A `CRUD` key can assign `R`, `CR`, or `CRUD` — but not `ADMIN`.
+- A `CR` key can assign `R` or `CR` — but not `CRUD` or `ADMIN`.
+- An `R` key cannot create API keys at all.
+
+This means you cannot escalate privileges by creating a key with a higher role than your own.
+
+## Choosing the right role
+
+- **Public leaderboards and result feeds** — use `R`. The key can read all timing data but cannot alter any records.
+- **Timing software and lap ingestion** — use `CR` if you only submit new laps without correcting them, or `CRUD` if you also need to update or delete incorrect entries.
+- **Event management software** — use `CRUD` for full control over events, participants, tracks, and laps.
+- **Primary integration or DevOps tooling** — use `ADMIN` only when you need to manage the license itself or provision other API keys programmatically.
+
+<Tip>
+Follow the least-privilege principle: issue the lowest role that lets the integration do its job. If a read-only dashboard key is ever compromised, an attacker gains no ability to modify or delete your data.
+</Tip>

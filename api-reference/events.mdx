@@ -1,0 +1,432 @@
+---
+title: "Events API — racing sessions and competitions"
+description: "Query, create, and update racing events that group rigs, cars, and track layouts into a timed session. GET endpoints are public; writes require CRUD role."
+---
+
+An event represents a discrete racing session or competition in PitPath Chrono. Events reference a simulator, one or more cars and track layouts, and the rigs that were active during the session. GET endpoints are public and require no authentication. Creating or modifying events requires a key with CRUD or higher privileges.
+
+---
+
+## GET /api/v1/events
+
+Return all enabled events. This endpoint is public and requires no API key.
+
+**Authentication:** None required
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/events
+```
+
+The response is an array of event objects. Each item has the shape described below.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the event.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the event.
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  URL-safe identifier for the event.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  Short description of the event.
+</ResponseField>
+
+<ResponseField name="mode" type="string">
+  Competition format. One of `HOTLAP`, `PRACTICE`, `AI_RACE`, or `MULTIPLAYER_RACE`.
+</ResponseField>
+
+<ResponseField name="startsAt" type="string (ISO 8601)">
+  Scheduled start time of the event.
+</ResponseField>
+
+<ResponseField name="endsAt" type="string (ISO 8601)">
+  Scheduled end time of the event.
+</ResponseField>
+
+<ResponseField name="simulatorId" type="string (UUID)" required>
+  UUID of the simulator used in this event.
+</ResponseField>
+
+<ResponseField name="simulatorDisplayName" type="string" required>
+  Human-readable name of the simulator.
+</ResponseField>
+
+<ResponseField name="carIds" type="string[] (UUID[])" required>
+  UUIDs of the cars included in this event.
+</ResponseField>
+
+<ResponseField name="trackLayoutIds" type="string[] (UUID[])" required>
+  UUIDs of the track layouts used.
+</ResponseField>
+
+<ResponseField name="rigIds" type="string[] (UUID[])" required>
+  UUIDs of the timing rigs assigned to this event.
+</ResponseField>
+
+<ResponseField name="brandIds" type="string[] (UUID[])" required>
+  UUIDs of the brands associated with this event.
+</ResponseField>
+
+<ResponseField name="i18nJson" type="object">
+  Arbitrary key-value map of localization overrides for the event.
+</ResponseField>
+
+<ResponseField name="settingsJson" type="object">
+  Arbitrary key-value map of event-specific configuration.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether the event is visible in public listings.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the event was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update.
+</ResponseField>
+
+```json
+[
+  {
+    "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+    "name": "Spring Cup Round 1",
+    "slug": "spring-cup-r1",
+    "description": "Opening round of the Spring Cup series.",
+    "mode": "HOTLAP",
+    "startsAt": "2026-06-01T14:00:00Z",
+    "endsAt": "2026-06-01T16:00:00Z",
+    "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+    "simulatorDisplayName": "iRacing",
+    "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+    "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+    "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+    "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+    "i18nJson": {},
+    "settingsJson": { "maxLaps": 30 },
+    "enabled": true,
+    "createdAt": "2026-05-01T08:00:00Z",
+    "updatedAt": "2026-05-10T12:00:00Z"
+  }
+]
+```
+
+---
+
+## GET /api/v1/events/paged
+
+Return a paginated list of enabled events, sorted by `startsAt` ascending by default.
+
+**Authentication:** None required
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page number.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of events per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="startsAt">
+  Field to sort by, optionally followed by `,asc` or `,desc`.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url 'https://api.pitpath.de/api/v1/events/paged?page=0&size=20&sort=startsAt,asc'
+```
+
+The response wraps the event array in a standard page envelope with `content`, `totalElements`, `totalPages`, `number`, and `size` fields.
+
+```json
+{
+  "content": [
+    {
+      "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+      "name": "Spring Cup Round 1",
+      "slug": "spring-cup-r1",
+      "description": "Opening round of the Spring Cup series.",
+      "mode": "HOTLAP",
+      "startsAt": "2026-06-01T14:00:00Z",
+      "endsAt": "2026-06-01T16:00:00Z",
+      "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+      "simulatorDisplayName": "iRacing",
+      "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+      "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+      "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+      "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+      "i18nJson": {},
+      "settingsJson": {},
+      "enabled": true,
+      "createdAt": "2026-05-01T08:00:00Z",
+      "updatedAt": "2026-05-10T12:00:00Z"
+    }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
+```
+
+---
+
+## GET /api/v1/events/{eventId}
+
+Return a single event by its UUID.
+
+**Authentication:** None required
+
+<ParamField path="eventId" type="string (UUID)" required>
+  UUID of the event to retrieve.
+</ParamField>
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/events/e1f2a3b4-c5d6-7890-abcd-ef1234567890
+```
+
+Returns a single event object with the same shape as items from `GET /api/v1/events`.
+
+```json
+{
+  "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "name": "Spring Cup Round 1",
+  "slug": "spring-cup-r1",
+  "description": "Opening round of the Spring Cup series.",
+  "mode": "HOTLAP",
+  "startsAt": "2026-06-01T14:00:00Z",
+  "endsAt": "2026-06-01T16:00:00Z",
+  "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "simulatorDisplayName": "iRacing",
+  "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+  "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+  "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+  "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+  "i18nJson": {},
+  "settingsJson": { "maxLaps": 30 },
+  "enabled": true,
+  "createdAt": "2026-05-01T08:00:00Z",
+  "updatedAt": "2026-05-10T12:00:00Z"
+}
+```
+
+---
+
+## POST /api/v1/events
+
+Create a new event.
+
+**Required role:** CRUD or higher
+
+<ParamField body="name" type="string" required>
+  Display name for the event. Must be 2–120 characters.
+</ParamField>
+
+<ParamField body="slug" type="string" required>
+  URL-safe slug for the event. Must be 2–25 characters.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Short description. Maximum 255 characters.
+</ParamField>
+
+<ParamField body="mode" type="string">
+  Competition format. One of `HOTLAP`, `PRACTICE`, `AI_RACE`, or `MULTIPLAYER_RACE`. Optional.
+</ParamField>
+
+<ParamField body="startsAt" type="string (ISO 8601)">
+  Scheduled start time. Optional.
+</ParamField>
+
+<ParamField body="endsAt" type="string (ISO 8601)">
+  Scheduled end time. Optional.
+</ParamField>
+
+<ParamField body="simulatorId" type="string (UUID)" required>
+  UUID of the simulator to associate with this event.
+</ParamField>
+
+<ParamField body="carIds" type="string[] (UUID[])" required>
+  One or more car UUIDs. Must not be null; each element must be a valid UUID.
+</ParamField>
+
+<ParamField body="trackLayoutIds" type="string[] (UUID[])" required>
+  One or more track layout UUIDs.
+</ParamField>
+
+<ParamField body="rigIds" type="string[] (UUID[])" required>
+  One or more rig UUIDs active during this event.
+</ParamField>
+
+<ParamField body="brandIds" type="string[] (UUID[])" required>
+  One or more brand UUIDs to associate.
+</ParamField>
+
+<ParamField body="i18nJson" type="object">
+  Optional map of localization overrides.
+</ParamField>
+
+<ParamField body="settingsJson" type="object">
+  Optional map of event configuration values.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Whether to make the event visible in public listings immediately. Defaults to `false` if omitted.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/events \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "name": "Spring Cup Round 1",
+    "slug": "spring-cup-r1",
+    "description": "Opening round of the Spring Cup series.",
+    "mode": "HOTLAP",
+    "startsAt": "2026-06-01T14:00:00Z",
+    "endsAt": "2026-06-01T16:00:00Z",
+    "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+    "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+    "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+    "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+    "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+    "settingsJson": { "maxLaps": 30 },
+    "enabled": true
+  }'
+```
+
+Returns `201 Created` with the full event object.
+
+```json
+{
+  "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "name": "Spring Cup Round 1",
+  "slug": "spring-cup-r1",
+  "description": "Opening round of the Spring Cup series.",
+  "mode": "HOTLAP",
+  "startsAt": "2026-06-01T14:00:00Z",
+  "endsAt": "2026-06-01T16:00:00Z",
+  "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "simulatorDisplayName": "iRacing",
+  "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+  "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+  "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+  "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+  "i18nJson": {},
+  "settingsJson": { "maxLaps": 30 },
+  "enabled": true,
+  "createdAt": "2026-05-19T10:00:00Z",
+  "updatedAt": "2026-05-19T10:00:00Z"
+}
+```
+
+---
+
+## PATCH /api/v1/events/{eventId}
+
+Update an existing event. All fields are optional — only the fields you provide are changed.
+
+**Required role:** CRUD or higher
+
+<ParamField path="eventId" type="string (UUID)" required>
+  UUID of the event to update.
+</ParamField>
+
+<ParamField body="name" type="string">
+  New display name. Must be 2–120 characters.
+</ParamField>
+
+<ParamField body="slug" type="string">
+  New URL-safe slug. Must be 2–25 characters.
+</ParamField>
+
+<ParamField body="description" type="string">
+  New description. Maximum 255 characters.
+</ParamField>
+
+<ParamField body="mode" type="string">
+  Updated competition format. One of `HOTLAP`, `PRACTICE`, `AI_RACE`, or `MULTIPLAYER_RACE`.
+</ParamField>
+
+<ParamField body="startsAt" type="string (ISO 8601)">
+  Updated start time.
+</ParamField>
+
+<ParamField body="endsAt" type="string (ISO 8601)">
+  Updated end time.
+</ParamField>
+
+<ParamField body="simulatorId" type="string (UUID)">
+  Replacement simulator UUID.
+</ParamField>
+
+<ParamField body="carIds" type="string[] (UUID[])">
+  Replacement set of car UUIDs. Replaces the entire existing list.
+</ParamField>
+
+<ParamField body="trackLayoutIds" type="string[] (UUID[])">
+  Replacement set of track layout UUIDs.
+</ParamField>
+
+<ParamField body="rigIds" type="string[] (UUID[])">
+  Replacement set of rig UUIDs.
+</ParamField>
+
+<ParamField body="brandIds" type="string[] (UUID[])">
+  Replacement set of brand UUIDs.
+</ParamField>
+
+<ParamField body="i18nJson" type="object">
+  Replacement localization map.
+</ParamField>
+
+<ParamField body="settingsJson" type="object">
+  Replacement settings map.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Set the event's visibility in public listings.
+</ParamField>
+
+```bash
+curl --request PATCH \
+  --url https://api.pitpath.de/api/v1/events/e1f2a3b4-c5d6-7890-abcd-ef1234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "enabled": false
+  }'
+```
+
+Returns `200 OK` with the updated event object.
+
+```json
+{
+  "id": "e1f2a3b4-c5d6-7890-abcd-ef1234567890",
+  "name": "Spring Cup Round 1",
+  "slug": "spring-cup-r1",
+  "description": "Opening round of the Spring Cup series.",
+  "mode": "HOTLAP",
+  "startsAt": "2026-06-01T14:00:00Z",
+  "endsAt": "2026-06-01T16:00:00Z",
+  "simulatorId": "s1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "simulatorDisplayName": "iRacing",
+  "carIds": ["c1d2e3f4-a5b6-7890-abcd-ef1234567890"],
+  "trackLayoutIds": ["t1u2v3w4-x5y6-7890-abcd-ef1234567890"],
+  "rigIds": ["r1i2g3h4-i5j6-7890-abcd-ef1234567890"],
+  "brandIds": ["b1r2a3n4-d5f6-7890-abcd-ef1234567890"],
+  "i18nJson": {},
+  "settingsJson": { "maxLaps": 30 },
+  "enabled": false,
+  "createdAt": "2026-05-19T10:00:00Z",
+  "updatedAt": "2026-05-19T11:30:00Z"
+}
+```

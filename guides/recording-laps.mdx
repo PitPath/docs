@@ -1,0 +1,126 @@
+---
+title: "Record and query lap times in Chrono"
+description: "Learn how to submit lap times with sector splits to PitPath Chrono, query and paginate results, and update or invalidate existing laps."
+---
+
+Laps are the core timing records in PitPath Chrono. Each lap belongs to a participant, is captured by a specific rig, and is scoped to an event, car, and track layout. Sector times are stored individually so you can analyze split performance in addition to the overall lap time.
+
+<Steps>
+  <Step title="Confirm required IDs are available">
+    Before posting a lap you need the following UUIDs. All are required — the API returns `400 Bad Request` if any are missing or invalid.
+
+    | Field | Where to get it |
+    |---|---|
+    | `participantId` | `POST /api/v1/participants` or `GET /api/v1/participants` |
+    | `rigId` | Returned at rig registration (`POST /api/v1/rigs`) |
+    | `eventId` | `POST /api/v1/events` or `GET /api/v1/events` |
+    | `carId` | `GET /api/v1/cars` |
+    | `trackId` | `GET /api/v1/track-layouts` |
+  </Step>
+
+  <Step title="Record a lap">
+    Send a `POST` request to `/api/v1/laps`. This endpoint requires the `CRUD` or `ADMIN` role, or a rig-scoped API key.
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `participantId` | UUID | Yes | The participant who drove the lap |
+    | `rigId` | UUID | Yes | The rig that captured the lap |
+    | `eventId` | UUID | Yes | The event this lap belongs to |
+    | `sectors` | integer[] | Yes | Sector times in milliseconds, in order |
+    | `totalTime` | integer | Yes | Total lap time in milliseconds |
+    | `valid` | boolean | Yes | Whether the lap is counted in official results |
+    | `carId` | UUID | Yes | The car driven |
+    | `trackId` | UUID | Yes | The track layout driven |
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.pitpath.de/api/v1/laps \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "participantId": "aaaaaaaa-1111-2222-3333-444444444444",
+        "rigId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "eventId": "eeeeeeee-1111-2222-3333-444444444444",
+        "sectors": [52340, 61820, 48910],
+        "totalTime": 163070,
+        "valid": true,
+        "carId": "22222222-aaaa-bbbb-cccc-dddddddddddd",
+        "trackId": "44444444-aaaa-bbbb-cccc-dddddddddddd"
+      }'
+    ```
+
+    </CodeGroup>
+
+    A `201 Created` response returns the recorded lap:
+
+    ```json
+    {
+      "id": "bbbbbbbb-5555-6666-7777-888888888888",
+      "participantId": "aaaaaaaa-1111-2222-3333-444444444444",
+      "participantName": "Max Verstappen",
+      "rigId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "rigName": "Pit Lane Rig 1",
+      "eventId": "eeeeeeee-1111-2222-3333-444444444444",
+      "eventName": "Spring Hotlap Championship 2026",
+      "sectors": [52340, 61820, 48910],
+      "totalTime": 163070,
+      "valid": true,
+      "car": "22222222-aaaa-bbbb-cccc-dddddddddddd",
+      "trackId": "44444444-aaaa-bbbb-cccc-dddddddddddd",
+      "trackDisplayName": "Spa-Francorchamps GP",
+      "createdAt": "2026-05-19T14:32:10Z",
+      "updatedAt": "2026-05-19T14:32:10Z"
+    }
+    ```
+
+    <Note>
+      `sectors` is an array of integers where each element represents a sector time in **milliseconds**. The number of sectors must match the track layout's sector configuration. `totalTime` should equal the sum of all sector values — Chrono stores both independently but does not enforce equality, so ensure your timing hardware calculates them from the same source.
+    </Note>
+  </Step>
+
+  <Step title="Query laps">
+    Retrieve all laps with `GET /api/v1/laps`, or use the paginated endpoint for larger datasets:
+
+    ```bash
+    # All laps (unbounded — use with care on large datasets)
+    curl https://api.pitpath.de/api/v1/laps \
+      -H "X-API-Key: YOUR_API_KEY"
+
+    # Paginated, sorted by fastest lap first
+    curl "https://api.pitpath.de/api/v1/laps/paged?page=0&size=20&sort=totalTime" \
+      -H "X-API-Key: YOUR_API_KEY"
+    ```
+
+    The paged response wraps results in a `PageResponse` envelope:
+
+    ```json
+    {
+      "content": [ /* array of lap objects */ ],
+      "page": 0,
+      "size": 20,
+      "totalElements": 342,
+      "totalPages": 18
+    }
+    ```
+
+    Retrieve a single lap by ID with `GET /api/v1/laps/{lapId}`.
+  </Step>
+
+  <Step title="Update a lap">
+    Use `PATCH /api/v1/laps/{lapId}` to correct a recorded lap. This endpoint requires the `CRUD` or `ADMIN` role. All fields are optional — only the fields you include are changed.
+
+    ```bash
+    curl -X PATCH https://api.pitpath.de/api/v1/laps/bbbbbbbb-5555-6666-7777-888888888888 \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "valid": false
+      }'
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Setting `valid` to `false` excludes the lap from all official results and leaderboards. This flag is the authoritative source for result validity — use it to mark laps that were cut, recorded under yellow flags, or otherwise ineligible. Invalidating a lap cannot be undone automatically; you must explicitly `PATCH` it back to `valid: true` if needed.
+</Warning>

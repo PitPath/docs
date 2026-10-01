@@ -1,0 +1,199 @@
+---
+title: "Get started with PitPath Chrono"
+description: "Make your first API call against PitPath Chrono, register a timing rig using a signed license file, and record your first lap time in four steps."
+---
+
+This guide walks you through the minimum steps to go from zero to a recorded lap time. You will list events to confirm your key works, register a rig with its hardware ID, and then post a lap against that rig.
+
+All requests go to the base path `/api/v1/` and require the `X-API-Key` header. See [Authentication](/authentication) for details on roles and key management.
+
+<Steps>
+  <Step title="Obtain your license and API key">
+    Contact the PitPath team to provision a license for your organization. When your license is created, Chrono returns a bootstrap response containing your license details and an initial ADMIN API key — store the `token` value immediately, as it is only returned once.
+
+    ```json Example bootstrap response
+    {
+      "license": {
+        "id": "a1b2c3d4-0000-0000-0000-000000000000",
+        "name": "my-org",
+        "displayName": "My Racing Organization",
+        "licenseKey": "lk_...",
+        "enabled": true,
+        "expiresAt": "2026-12-31T23:59:59Z",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-01T00:00:00Z"
+      },
+      "apiKey": {
+        "apiKey": {
+          "id": "b2c3d4e5-0000-0000-0000-000000000001",
+          "licenseId": "a1b2c3d4-0000-0000-0000-000000000000",
+          "name": "Initial admin key",
+          "keyPrefix": "chrono_adm_",
+          "role": "ADMIN",
+          "enabled": true,
+          "lastUsedAt": null,
+          "createdAt": "2025-01-01T00:00:00Z",
+          "updatedAt": "2025-01-01T00:00:00Z"
+        },
+        "token": "chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+    ```
+
+    <Note>
+      The `token` field is the raw API key value. Save it to a secure secrets store. Chrono stores only a hashed version and cannot recover the plain-text token after this response.
+    </Note>
+  </Step>
+
+  <Step title="Make your first API call — list events">
+    Confirm your key works by listing all enabled events. A `CR` role or higher is sufficient for this read operation.
+
+    ```bash curl
+    curl --request GET \
+      --url https://your-chrono-host/api/v1/events \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    A successful response returns an array of event objects. An empty array `[]` means no events have been created yet — that is expected on a fresh license.
+
+    ```json Example response
+    [
+      {
+        "id": "e1f2a3b4-0000-0000-0000-000000000010",
+        "name": "Sunday Hotlap Round 1",
+        "slug": "sunday-hotlap-r1",
+        "description": "First round of the Sunday hotlap series.",
+        "mode": "HOTLAP",
+        "startsAt": "2025-06-01T10:00:00Z",
+        "endsAt": "2025-06-01T18:00:00Z",
+        "simulatorId": "sim-uuid",
+        "simulatorDisplayName": "iRacing",
+        "carIds": ["car-uuid"],
+        "trackLayoutIds": ["layout-uuid"],
+        "rigIds": ["rig-uuid"],
+        "brandIds": [],
+        "i18nJson": {},
+        "settingsJson": {},
+        "enabled": true,
+        "createdAt": "2025-05-01T00:00:00Z",
+        "updatedAt": "2025-05-01T00:00:00Z"
+      }
+    ]
+    ```
+  </Step>
+
+  <Step title="Register a rig">
+    A rig represents a physical sim racing setup. To register one, you provide its `hardwareId` (a unique identifier for the machine) and a signed license file issued by the PitPath team for your license.
+
+    First, request a license file for your license ID by calling:
+
+    ```bash curl
+    curl --request POST \
+      --url https://your-chrono-host/api/v1/licenses/{licenseId}/file \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    That returns an object with `licenseId`, `licenseKey`, `issuedAt`, and `signature` — pass those four fields as the `licenseFile` object when creating the rig:
+
+    ```bash curl
+    curl --request POST \
+      --url https://your-chrono-host/api/v1/rigs \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      --header "Content-Type: application/json" \
+      --data '{
+        "hardwareId": "RIG-MACHINE-001",
+        "licenseFile": {
+          "licenseId": "a1b2c3d4-0000-0000-0000-000000000000",
+          "licenseKey": "lk_...",
+          "issuedAt": "2025-01-01T00:00:00Z",
+          "signature": "sig_..."
+        }
+      }'
+    ```
+
+    The response includes the new rig and an auto-generated API key scoped to that rig:
+
+    ```json Example response
+    {
+      "rig": {
+        "id": "r1g2a3b4-0000-0000-0000-000000000020",
+        "name": "Rig 001",
+        "description": null,
+        "hardwareId": "RIG-MACHINE-001",
+        "licenseId": "a1b2c3d4-0000-0000-0000-000000000000",
+        "licenseDisplayName": "My Racing Organization",
+        "enabled": true,
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-01T00:00:00Z"
+      },
+      "apiKey": {
+        "apiKey": {
+          "id": "k3y4a5b6-0000-0000-0000-000000000030",
+          "licenseId": "a1b2c3d4-0000-0000-0000-000000000000",
+          "name": "Rig 001 key",
+          "keyPrefix": "chrono_cr_",
+          "role": "CR",
+          "enabled": true,
+          "lastUsedAt": null,
+          "createdAt": "2025-01-01T00:00:00Z",
+          "updatedAt": "2025-01-01T00:00:00Z"
+        },
+        "token": "chrono_cr_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+      }
+    }
+    ```
+
+    <Tip>
+      Use the rig's auto-generated API key on the sim rig itself. Its `CR` role lets it submit laps without granting access to administrative operations.
+    </Tip>
+  </Step>
+
+  <Step title="Record your first lap time">
+    With an event, a participant, a rig, a car, and a track in place, you can submit a lap. Sector times are in milliseconds and must sum to `totalTime`.
+
+    ```bash curl
+    curl --request POST \
+      --url https://your-chrono-host/api/v1/laps \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      --header "Content-Type: application/json" \
+      --data '{
+        "participantId": "p1a2r3t4-0000-0000-0000-000000000040",
+        "rigId": "r1g2a3b4-0000-0000-0000-000000000020",
+        "eventId": "e1f2a3b4-0000-0000-0000-000000000010",
+        "sectors": [32541, 41208, 29311],
+        "totalTime": 103060,
+        "valid": true,
+        "carId": "c1a2r3b4-0000-0000-0000-000000000050",
+        "trackId": "t1r2a3c4-0000-0000-0000-000000000060"
+      }'
+    ```
+
+    A `201 Created` response confirms the lap is recorded:
+
+    ```json Example response
+    {
+      "id": "l1a2p3b4-0000-0000-0000-000000000070",
+      "participantId": "p1a2r3t4-0000-0000-0000-000000000040",
+      "participantName": "Jane Driver",
+      "rigId": "r1g2a3b4-0000-0000-0000-000000000020",
+      "rigName": "Rig 001",
+      "eventId": "e1f2a3b4-0000-0000-0000-000000000010",
+      "eventName": "Sunday Hotlap Round 1",
+      "sectors": [32541, 41208, 29311],
+      "totalTime": 103060,
+      "valid": true,
+      "car": "c1a2r3b4-0000-0000-0000-000000000050",
+      "trackId": "t1r2a3c4-0000-0000-0000-000000000060",
+      "trackDisplayName": "Spa-Francorchamps GP",
+      "createdAt": "2025-06-01T10:34:22Z",
+      "updatedAt": "2025-06-01T10:34:22Z"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Next steps
+
+- Read [Authentication](/authentication) to understand roles and how to create additional API keys with the right permissions.
+- Browse the [API reference](/api-reference/overview) for every available endpoint.
+- Check [Licenses and rigs](/concepts/licenses-and-rigs) for a deeper explanation of how your license scopes data.

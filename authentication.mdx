@@ -1,0 +1,194 @@
+---
+title: "Authenticate with the PitPath Chrono API"
+description: "Learn how API key authentication works in PitPath Chrono, which role to assign for each integration, and how to rotate keys without downtime."
+---
+
+Every request to the PitPath Chrono API must include a valid API key. Keys are sent in the `X-API-Key` HTTP header and are scoped to a role that controls what operations the caller can perform.
+
+## How API key authentication works
+
+When you make a request, Chrono reads the `X-API-Key` header, looks up the matching key, and checks whether the associated role permits the requested operation. There are no session cookies, no OAuth flows, and no bearer tokens — just the key in the header.
+
+```
+X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Keys are stored as hashed values. Once a key is created, the plain-text token is returned **only once** in the creation response. If you lose it, you must create a new key and revoke the old one.
+
+<Note>
+  Always store API keys in a secrets manager or environment variable. Never hard-code them in source code or check them into version control.
+</Note>
+
+## Getting an API key
+
+Your first ADMIN key is provisioned when your license is created by the PitPath team. To create additional keys, use the API keys endpoint with a key that has at least `CR` role.
+
+<Tabs>
+  <Tab title="curl">
+    ```bash
+    curl --request POST \
+      --url https://your-chrono-host/api/v1/api-keys \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      --header "Content-Type: application/json" \
+      --data '{
+        "name": "Timing software integration",
+        "role": "CR"
+      }'
+    ```
+  </Tab>
+  <Tab title="fetch">
+    ```javascript
+    const response = await fetch('https://your-chrono-host/api/v1/api-keys', {
+      method: 'POST',
+      headers: {
+        'X-API-Key': 'chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Timing software integration',
+        role: 'CR',
+      }),
+    });
+
+    const data = await response.json();
+    console.log(data.token); // save this — it won't be shown again
+    ```
+  </Tab>
+</Tabs>
+
+The response contains the key metadata and the one-time plain-text token:
+
+```json Example response
+{
+  "apiKey": {
+    "id": "k3y4a5b6-0000-0000-0000-000000000030",
+    "licenseId": "a1b2c3d4-0000-0000-0000-000000000000",
+    "name": "Timing software integration",
+    "keyPrefix": "chrono_cr_",
+    "role": "CR",
+    "enabled": true,
+    "lastUsedAt": null,
+    "createdAt": "2025-01-15T09:00:00Z",
+    "updatedAt": "2025-01-15T09:00:00Z"
+  },
+  "token": "chrono_cr_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+}
+```
+
+The `name` field must be between 3 and 120 characters. Use a descriptive name so you can identify the key's purpose when listing all keys later.
+
+## Roles
+
+Every API key has exactly one role. Roles are cumulative — a higher role includes all permissions of lower roles.
+
+| Role | Level | What it can do |
+|------|-------|----------------|
+| `R` | 0 | Read any resource (events, laps, rigs, participants, tracks, cars, etc.) |
+| `CR` | 1 | Everything in `R`, plus create new resources and create additional API keys |
+| `CRUD` | 2 | Everything in `CR`, plus update and delete resources |
+| `ADMIN` | 3 | Everything in `CRUD`, plus license management and assigning any role to keys |
+
+### Choosing the right role
+
+- Use `R` for dashboards, public leaderboards, or any integration that only needs to display data.
+- Use `CR` for sim rigs. When Chrono registers a rig, it auto-generates a `CR` key for that rig to submit laps.
+- Use `CRUD` for your primary results management software that needs to correct or delete records.
+- Use `ADMIN` only for your back-office tools that manage the license itself or provision other ADMIN keys.
+
+<Warning>
+  A key can only assign roles up to its own level. An `CRUD` key cannot create an `ADMIN` key. Only `ADMIN` keys can assign any role freely.
+</Warning>
+
+## Using a key in a request
+
+Include the key in every request via the `X-API-Key` header. There is no separate login step.
+
+<Tabs>
+  <Tab title="curl">
+    ```bash
+    curl --request GET \
+      --url https://your-chrono-host/api/v1/events \
+      --header "X-API-Key: chrono_cr_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+    ```
+  </Tab>
+  <Tab title="fetch">
+    ```javascript
+    const response = await fetch('https://your-chrono-host/api/v1/events', {
+      headers: {
+        'X-API-Key': process.env.CHRONO_API_KEY,
+      },
+    });
+
+    const events = await response.json();
+    ```
+  </Tab>
+</Tabs>
+
+## Listing your API keys
+
+To see all keys associated with your license, use a key with at least `CR` role:
+
+<Tabs>
+  <Tab title="curl">
+    ```bash
+    curl --request GET \
+      --url https://your-chrono-host/api/v1/api-keys \
+      --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+  </Tab>
+  <Tab title="fetch">
+    ```javascript
+    const response = await fetch('https://your-chrono-host/api/v1/api-keys', {
+      headers: {
+        'X-API-Key': process.env.CHRONO_API_KEY,
+      },
+    });
+
+    const keys = await response.json();
+    ```
+  </Tab>
+</Tabs>
+
+The response is an array of key objects. Note that `keyPrefix` is returned (e.g. `chrono_cr_`) but the full token is never exposed after initial creation.
+
+## Rotating a key
+
+To rotate a key, create a new one with the desired role, deploy it to your application, then revoke the old key. There is no in-place secret rotation — the token value is fixed at creation.
+
+**Step 1 — Create the replacement key:**
+
+```bash curl
+curl --request POST \
+  --url https://your-chrono-host/api/v1/api-keys \
+  --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "name": "Timing software integration v2",
+    "role": "CR"
+  }'
+```
+
+**Step 2 — Update your application to use the new token, then revoke the old key:**
+
+```bash curl
+curl --request DELETE \
+  --url https://your-chrono-host/api/v1/api-keys/k3y4a5b6-0000-0000-0000-000000000030 \
+  --header "X-API-Key: chrono_adm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+A successful revocation returns `204 No Content`.
+
+<Note>
+  Revocation is immediate and permanent. Make sure the new key is deployed and working before you delete the old one.
+</Note>
+
+## Common authentication errors
+
+| Status | Meaning | What to do |
+|--------|---------|------------|
+| `401 Unauthorized` | The `X-API-Key` header is missing, the token is invalid, or the key has been revoked. | Check that the header is present and the token matches the one returned at creation. |
+| `403 Forbidden` | The key's role does not permit the requested operation. | Use a key with a higher role, or request that an ADMIN create one for you. |
+
+<Tip>
+  If you receive a `401` on a key you believe is valid, check the `enabled` field by listing your keys. A key can be disabled via `PATCH /api/v1/api-keys/{apiKeyId}` without being fully revoked.
+</Tip>

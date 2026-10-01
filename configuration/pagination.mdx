@@ -1,0 +1,86 @@
+---
+title: "Paginated API responses in PitPath Chrono"
+description: "Use paged list endpoints in PitPath Chrono. Learn the page response structure, page/size/sort query parameters, and default sort fields per resource."
+---
+
+Most collection endpoints in PitPath Chrono come in two variants. The base path (for example, `GET /api/v1/laps`) returns the full list in a single response. The `/paged` path (for example, `GET /api/v1/laps/paged`) returns the same data wrapped in a `PageResponse` envelope that includes pagination metadata.
+
+Use the full list endpoint when you know the dataset is small. For large datasets — such as all laps recorded across a season — use the paged endpoint to avoid loading everything at once.
+
+<Tip>
+The full list endpoint is convenient for small lookups (tracks, simulators, car classes). Switch to the paged endpoint whenever the result set could grow unbounded, such as laps or participants.
+</Tip>
+
+## PageResponse structure
+
+Every paged endpoint returns the same `PageResponse` wrapper regardless of the resource type.
+
+| Field           | Type    | Description                                                             |
+|-----------------|---------|-------------------------------------------------------------------------|
+| `content`       | array   | The items on the current page.                                          |
+| `page`          | integer | The current page number (0-indexed).                                    |
+| `size`          | integer | The number of items requested per page.                                 |
+| `totalElements` | long    | The total number of items across all pages.                             |
+| `totalPages`    | integer | The total number of pages.                                              |
+| `first`         | boolean | `true` if this is the first page.                                       |
+| `last`          | boolean | `true` if this is the last page.                                        |
+| `empty`         | boolean | `true` if `content` is empty.                                           |
+
+## Query parameters
+
+| Parameter | Type    | Description                                                                        |
+|-----------|---------|------------------------------------------------------------------------------------|
+| `page`    | integer | Page index to retrieve, starting at `0`. Defaults to `0`.                         |
+| `size`    | integer | Number of items per page. Defaults vary by endpoint (see below).                  |
+| `sort`    | string  | Field name to sort by. Append `,asc` or `,desc` to control direction.             |
+
+## Example request
+
+```bash
+curl "https://api.pitpath.de/api/v1/laps/paged?page=0&size=20&sort=totalTime" \
+  -H "X-API-Key: <your-api-key>"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "content": [
+    {
+      "id": "1a2b3c4d-0000-0000-0000-000000000001",
+      "totalTime": 83412,
+      "valid": true
+    },
+    {
+      "id": "1a2b3c4d-0000-0000-0000-000000000002",
+      "totalTime": 84021,
+      "valid": true
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 4381,
+  "totalPages": 220,
+  "first": true,
+  "last": false,
+  "empty": false
+}
+```
+
+To fetch the next page, increment `page` by one. When `last` is `true`, you have reached the final page.
+
+## Default sort fields per resource
+
+Each paged endpoint has a default sort field applied when you omit the `sort` parameter.
+
+<Note>
+You can override the default sort field on any endpoint by passing an explicit `sort` query parameter. For example, `sort=createdAt,desc` sorts by creation time descending regardless of the endpoint's default.
+</Note>
+
+| Resource        | Paged endpoint              | Default sort field |
+|-----------------|-----------------------------|--------------------|
+| Laps            | `/api/v1/laps/paged`        | `totalTime`        |
+| Events          | `/api/v1/events/paged`      | `startsAt`         |
+| Tracks          | `/api/v1/tracks/paged`      | `displayName`      |
+| Participants    | `/api/v1/participants/paged`| `lastName`         |
+| Cars            | `/api/v1/cars/paged`        | `modelName`        |

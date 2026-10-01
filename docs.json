@@ -1,0 +1,93 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Chrono",
+  "colors": {
+    "primary": "#07f09e",
+    "light": "#07f09e",
+    "dark": "#e7ecee"
+  },
+  "logo": "https://cdn.pitpath.net/brand/chrono.svg",
+  "favicon": "https://cdn.pitpath.net/brand/chrono_appicon.png",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/PitPath/chrono"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/licenses-and-rigs",
+              "concepts/events",
+              "concepts/participants-and-laps"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/registering-a-rig",
+              "guides/creating-an-event",
+              "guides/recording-laps",
+              "guides/managing-participants",
+              "guides/cdn-uploads"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/api-keys",
+              "configuration/access-roles",
+              "configuration/pagination"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api-reference/licenses",
+              "api-reference/api-keys",
+              "api-reference/events",
+              "api-reference/participants",
+              "api-reference/laps",
+              "api-reference/rigs",
+              "api-reference/tracks",
+              "api-reference/cars",
+              "api-reference/simulators",
+              "api-reference/brands",
+              "api-reference/signup-fields",
+              "api-reference/cdn"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "appearance": {
+    "strict": true
+  }
+}

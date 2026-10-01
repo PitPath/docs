@@ -1,0 +1,132 @@
+{
+  "projectType": "api-service",
+  "projectName": "PitPath Chrono",
+  "projectDescription": "A REST API service for managing sim racing events, lap timing, participants, rigs, cars, and tracks — powering timing and results for sim racing competitions.",
+  "theme": "luma",
+  "primaryColor": "#0f2948",
+  "lightColor": "#7a8c9b",
+  "darkColor": "#e7ecee",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/licenses-and-rigs",
+              "concepts/events",
+              "concepts/participants-and-laps"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/registering-a-rig",
+              "guides/creating-an-event",
+              "guides/recording-laps",
+              "guides/managing-participants",
+              "guides/cdn-uploads"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/api-keys",
+              "configuration/access-roles",
+              "configuration/pagination"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api-reference/licenses",
+              "api-reference/api-keys",
+              "api-reference/events",
+              "api-reference/participants",
+              "api-reference/laps",
+              "api-reference/rigs",
+              "api-reference/tracks",
+              "api-reference/cars",
+              "api-reference/simulators",
+              "api-reference/brands",
+              "api-reference/signup-fields",
+              "api-reference/cdn"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "License-based multi-tenancy with API key authentication",
+    "Rig registration via hardware ID and signed license files",
+    "Event management with simulator, car, and track layout associations",
+    "Lap time recording with sector splits and validity tracking",
+    "Participant management with custom signup fields per event",
+    "CDN asset upload for logos, images, and SVG graphics",
+    "Paginated list endpoints for all major resources",
+    "Role-based access control (R, CR, CRUD, ADMIN)"
+  ],
+  "publicApiSurface": [
+    "GET /api/v1/events",
+    "POST /api/v1/events",
+    "PATCH /api/v1/events/{eventId}",
+    "GET /api/v1/laps",
+    "POST /api/v1/laps",
+    "PATCH /api/v1/laps/{lapId}",
+    "GET /api/v1/participants",
+    "POST /api/v1/participants",
+    "PATCH /api/v1/participants/{participantId}",
+    "GET /api/v1/rigs",
+    "POST /api/v1/rigs",
+    "PATCH /api/v1/rigs/{rigId}",
+    "GET /api/v1/rigs/hardwareId/{hardwareId}",
+    "GET /api/v1/tracks",
+    "POST /api/v1/tracks",
+    "PATCH /api/v1/tracks/{trackId}",
+    "GET /api/v1/cars",
+    "POST /api/v1/cars",
+    "PATCH /api/v1/cars/{carId}",
+    "GET /api/v1/simulators",
+    "POST /api/v1/simulators",
+    "PATCH /api/v1/simulators/{simulatorId}",
+    "GET /api/v1/licenses/current",
+    "POST /api/v1/licenses",
+    "POST /api/v1/licenses/{licenseId}/file",
+    "GET /api/v1/api-keys",
+    "POST /api/v1/api-keys",
+    "PATCH /api/v1/api-keys/{apiKeyId}",
+    "DELETE /api/v1/api-keys/{apiKeyId}",
+    "GET /api/v1/brands",
+    "POST /api/v1/brands",
+    "PATCH /api/v1/brands/{brandId}",
+    "GET /api/v1/signup-fields",
+    "POST /api/v1/signup-fields",
+    "PATCH /api/v1/signup-fields/{signupFieldId}",
+    "POST /api/v1/cdn",
+    "GET /api/v1/car-brands",
+    "GET /api/v1/car-classes",
+    "GET /api/v1/track-layouts"
+  ]
+}

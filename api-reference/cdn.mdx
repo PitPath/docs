@@ -1,0 +1,97 @@
+---
+title: "CDN API — upload assets and media files"
+description: "Upload images and other media files to the PitPath Chrono CDN. Assets are organised by type and referenced by key in other resources."
+---
+
+The CDN API lets you upload image and media assets that are then referenced by key in other resources such as tracks, cars, simulators, and brands. The upload endpoint accepts a `multipart/form-data` request with two parts: a JSON metadata object (`cdnRequest`) and the binary file (`cdnFile`). The file is stored under a path derived from the `type` and `targetName` you provide.
+
+<Warning>This endpoint requires a CRUD+ role. You must include your `X-API-Key` header.</Warning>
+
+## Upload an asset
+
+Uploads a file to the CDN. Returns the string `"Success"` on success or `"Failed"` if the upload could not be completed.
+
+```
+POST /api/v1/cdn
+```
+
+The request must use `Content-Type: multipart/form-data` with two named parts:
+
+| Part | Content-Type | Description |
+|---|---|---|
+| `cdnRequest` | `application/json` | JSON object containing `type` and `targetName` |
+| `cdnFile` | `application/octet-stream` (or the file's MIME type) | The binary file to upload |
+
+**cdnRequest fields**
+
+<ParamField body="type" type="string" required>
+  Asset category. Controls which directory the file is stored under. Must be one of the `CdnType` enum values — see the table below.
+</ParamField>
+
+<ParamField body="targetName" type="string" required>
+  Filename to use on the CDN (must not be blank). The stored path is `{type}/{targetName}` — for example `TRACK/nurburgring-gp-map.svg`. This combined path is what you supply as the `logo`, `trackMap`, or similar field in other API calls.
+</ParamField>
+
+### CdnType values
+
+| Value | Used for |
+|---|---|
+| `BRAND` | Sponsor and partner brand logos |
+| `CLASS` | Car class logos |
+| `COUNTRY` | Country flag or emblem assets |
+| `LOGO` | Simulator logos and wide logos |
+| `TRACK` | Track maps and circuit images |
+
+### Responses
+
+| Status | Body | Meaning |
+|---|---|---|
+| `201 Created` | `"Success"` | The file was uploaded successfully. |
+| `400 Bad Request` | `"Failed"` | The upload could not be completed. Check that the file is valid and the CDN is reachable. |
+
+---
+
+## Example request
+
+The example below uploads an SVG track map. After a successful upload, you can reference it as `TRACK/nurburgring-gp-map.svg` in the `trackMap` field when creating or updating a track layout.
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/cdn \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F 'cdnRequest={"type":"TRACK","targetName":"nurburgring-gp-map.svg"};type=application/json' \
+  -F 'cdnFile=@/path/to/nurburgring-gp-map.svg;type=image/svg+xml'
+```
+
+**Response — success**
+
+```text 201
+Success
+```
+
+**Response — failure**
+
+```text 400
+Failed
+```
+
+---
+
+## Asset key format
+
+Once uploaded, an asset is referenced throughout the API by combining the `type` and `targetName` with a `/` separator:
+
+```
+{CdnType}/{targetName}
+```
+
+For example:
+
+| Uploaded as | Referenced as |
+|---|---|
+| `type: TRACK`, `targetName: nurburgring-gp-map.svg` | `TRACK/nurburgring-gp-map.svg` |
+| `type: BRAND`, `targetName: fanatec.svg` | `BRAND/fanatec.svg` |
+| `type: LOGO`, `targetName: acc-wide.png` | `LOGO/acc-wide.png` |
+| `type: CLASS`, `targetName: gt3.svg` | `CLASS/gt3.svg` |
+| `type: COUNTRY`, `targetName: deu.svg` | `COUNTRY/deu.svg` |
+
+Supply this combined key in the relevant field (`logo`, `trackMap`, `trackImages`, `logoWide`, etc.) when creating or updating any resource that references a CDN asset.

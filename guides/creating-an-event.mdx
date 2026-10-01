@@ -1,0 +1,139 @@
+---
+title: "Create and configure a sim racing event"
+description: "Learn how to create a PitPath Chrono event, assign simulators, cars, tracks, and rigs, and configure event modes and localization."
+---
+
+An event in PitPath Chrono is the container that groups participants, laps, and timing data for a single session — whether that is a hotlap challenge, a practice session, or a full race. You associate an event with exactly one simulator and with any number of cars, track layouts, rigs, and brands.
+
+<Steps>
+  <Step title="Ensure prerequisites exist">
+    Before creating an event you need the UUIDs of the resources you want to attach to it. Confirm that the following exist in Chrono and collect their IDs:
+
+    - **Simulator** — the game or platform (e.g. iRacing, ACC). One required per event.
+    - **Cars** — the car models that participants may drive. At least one UUID required.
+    - **Track layouts** — the specific circuit configurations. At least one UUID required.
+    - **Rigs** — the timing rigs that will record laps for this event. At least one UUID required.
+    - **Brands** — optional sponsor or partner brands to associate with the event.
+
+    Use the respective list endpoints (`GET /api/v1/simulators`, `GET /api/v1/cars`, `GET /api/v1/track-layouts`, `GET /api/v1/rigs`, `GET /api/v1/brands`) to retrieve IDs. See the [API reference](/api-reference/overview) for full details.
+  </Step>
+
+  <Step title="Create the event">
+    Send a `POST` request to `/api/v1/events`. This endpoint requires the `CRUD` or `ADMIN` role.
+
+    | Field | Type | Required | Description |
+    |---|---|---|---|
+    | `name` | string (2–120) | Yes | Human-readable event name |
+    | `slug` | string (2–25) | Yes | URL-safe identifier used in frontend routes |
+    | `description` | string (max 255) | Yes | Short description of the event |
+    | `mode` | enum | No | Session type: `HOTLAP`, `PRACTICE`, `AI_RACE`, or `MULTIPLAYER_RACE` |
+    | `startsAt` | ISO-8601 instant | No | When the event opens for lap recording |
+    | `endsAt` | ISO-8601 instant | No | When the event closes |
+    | `simulatorId` | UUID | Yes | The simulator used in this event |
+    | `carIds` | UUID[] | Yes | Cars available in this event |
+    | `trackLayoutIds` | UUID[] | Yes | Track layouts used in this event |
+    | `rigIds` | UUID[] | Yes | Rigs authorized to record laps for this event |
+    | `brandIds` | UUID[] | Yes | Brands associated with this event |
+    | `i18nJson` | object | No | Localization overrides keyed by locale code |
+    | `settingsJson` | object | No | Arbitrary event settings as key-value pairs |
+    | `enabled` | boolean | No | Whether the event is publicly visible (defaults to `false`) |
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -X POST https://api.pitpath.de/api/v1/events \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Spring Hotlap Championship 2026",
+        "slug": "spring-hotlap-2026",
+        "description": "Open hotlap event on Spa-Francorchamps for GT3 cars.",
+        "mode": "HOTLAP",
+        "startsAt": "2026-06-01T08:00:00Z",
+        "endsAt": "2026-06-30T23:59:59Z",
+        "simulatorId": "11111111-aaaa-bbbb-cccc-dddddddddddd",
+        "carIds": [
+          "22222222-aaaa-bbbb-cccc-dddddddddddd",
+          "33333333-aaaa-bbbb-cccc-dddddddddddd"
+        ],
+        "trackLayoutIds": [
+          "44444444-aaaa-bbbb-cccc-dddddddddddd"
+        ],
+        "rigIds": [
+          "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        ],
+        "brandIds": [
+          "55555555-aaaa-bbbb-cccc-dddddddddddd"
+        ],
+        "i18nJson": {
+          "de": { "name": "Frühlings-Hotlap-Meisterschaft 2026" }
+        },
+        "settingsJson": {
+          "maxLapsPerParticipant": 50,
+          "allowInvalidLaps": false
+        },
+        "enabled": true
+      }'
+    ```
+
+    </CodeGroup>
+
+    A `201 Created` response returns the full event object:
+
+    ```json
+    {
+      "id": "eeeeeeee-1111-2222-3333-444444444444",
+      "name": "Spring Hotlap Championship 2026",
+      "slug": "spring-hotlap-2026",
+      "description": "Open hotlap event on Spa-Francorchamps for GT3 cars.",
+      "mode": "HOTLAP",
+      "startsAt": "2026-06-01T08:00:00Z",
+      "endsAt": "2026-06-30T23:59:59Z",
+      "simulatorId": "11111111-aaaa-bbbb-cccc-dddddddddddd",
+      "simulatorDisplayName": "Assetto Corsa Competizione",
+      "carIds": [
+        "22222222-aaaa-bbbb-cccc-dddddddddddd",
+        "33333333-aaaa-bbbb-cccc-dddddddddddd"
+      ],
+      "trackLayoutIds": ["44444444-aaaa-bbbb-cccc-dddddddddddd"],
+      "rigIds": ["f47ac10b-58cc-4372-a567-0e02b2c3d479"],
+      "brandIds": ["55555555-aaaa-bbbb-cccc-dddddddddddd"],
+      "i18nJson": { "de": { "name": "Frühlings-Hotlap-Meisterschaft 2026" } },
+      "settingsJson": { "maxLapsPerParticipant": 50, "allowInvalidLaps": false },
+      "enabled": true,
+      "createdAt": "2026-05-19T12:00:00Z",
+      "updatedAt": "2026-05-19T12:00:00Z"
+    }
+    ```
+  </Step>
+
+  <Step title="Understand event modes">
+    The `mode` field controls how the session is classified in results and leaderboards:
+
+    | Mode | Description |
+    |---|---|
+    | `HOTLAP` | Single-driver timed laps against the clock. Best lap wins. |
+    | `PRACTICE` | Unranked free practice session. Laps are recorded but not ranked officially. |
+    | `AI_RACE` | Race against AI opponents. Lap and position data is captured. |
+    | `MULTIPLAYER_RACE` | Live multiplayer race. All participant laps are tracked together. |
+
+    You can omit `mode` if the session type is not yet decided — it defaults to `null` and can be set later via `PATCH`.
+  </Step>
+
+  <Step title="Enable or disable the event">
+    Use `PATCH /api/v1/events/{eventId}` to toggle visibility or update any other field after creation. Only the fields you include are changed.
+
+    ```bash
+    curl -X PATCH https://api.pitpath.de/api/v1/events/eeeeeeee-1111-2222-3333-444444444444 \
+      -H "X-API-Key: YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "enabled": false }'
+    ```
+
+    Disabling an event (`"enabled": false`) hides it from the public `GET /api/v1/events` list endpoint. Lap recording through authorized rigs is unaffected by the `enabled` flag.
+  </Step>
+</Steps>
+
+<Tip>
+  The `slug` field is designed for frontend URL generation. Keep it short, lowercase, and hyphen-separated — for example `"spring-hotlap-2026"`. This lets you build stable public URLs like `https://yourapp.com/events/spring-hotlap-2026` that remain valid even if the event name changes.
+</Tip>

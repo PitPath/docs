@@ -1,0 +1,103 @@
+---
+title: "Manage API keys for PitPath Chrono"
+description: "Create, list, update, and revoke scoped API keys to authenticate your integration with PitPath Chrono. Includes role assignment and key rotation guidance."
+---
+
+API keys are the primary way to authenticate requests to PitPath Chrono. Each key is scoped to a single license and carries an access role that controls what the key can do. The server stores only a hashed copy of the key value — you identify a key by its human-readable `name` and its short `keyPrefix`, which is the visible prefix displayed in listings.
+
+<Warning>
+The full API key value is returned **only once**, in the response to the creation request. Copy it to a secure secrets store immediately. It cannot be retrieved again.
+</Warning>
+
+<Note>
+You can only manage API keys that belong to your own license. Operations on keys from another license will return a 403 error.
+</Note>
+
+## Create a key
+
+Send a `POST` request to `/api/v1/api-keys` with a `name` (3–120 characters) and a `role`. The response body contains both the key metadata (`apiKey`) and the plain-text `token` you will use in subsequent requests.
+
+```bash
+curl -X POST https://api.pitpath.de/api/v1/api-keys \
+  -H "X-API-Key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Results display board",
+    "role": "R"
+  }'
+```
+
+**Response — 201 Created**
+
+```json
+{
+  "apiKey": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "licenseId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "name": "Results display board",
+    "keyPrefix": "ppck_live_abcd",
+    "role": "R",
+    "enabled": true,
+    "lastUsedAt": null,
+    "createdAt": "2026-05-19T10:00:00Z",
+    "updatedAt": "2026-05-19T10:00:00Z"
+  },
+  "token": "ppck_live_abcd1234567890examplefulltokenvalue"
+}
+```
+
+The `token` field is the complete key you pass in the `X-API-Key` header. The `keyPrefix` is the short prefix shown in all future listings — it lets you identify which key you are looking at without exposing the full value.
+
+## List keys
+
+Send a `GET` request to `/api/v1/api-keys` to retrieve all keys for your license. The response is an array of API key objects. The full key value is **never** included in list responses — only the `keyPrefix` and metadata are returned.
+
+```bash
+curl https://api.pitpath.de/api/v1/api-keys \
+  -H "X-API-Key: <your-api-key>"
+```
+
+**Response — 200 OK**
+
+```json
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "licenseId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "name": "Results display board",
+    "keyPrefix": "ppck_live_abcd",
+    "role": "R",
+    "enabled": true,
+    "lastUsedAt": "2026-05-19T11:23:00Z",
+    "createdAt": "2026-05-19T10:00:00Z",
+    "updatedAt": "2026-05-19T10:00:00Z"
+  }
+]
+```
+
+## Update a key
+
+Send a `PATCH` request to `/api/v1/api-keys/{apiKeyId}` to change the key's `name`, `role`, or `enabled` status. All fields are optional — include only what you want to change.
+
+```bash
+curl -X PATCH https://api.pitpath.de/api/v1/api-keys/3fa85f64-5717-4562-b3fc-2c963f66afa6 \
+  -H "X-API-Key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Results display board (read-only)",
+    "enabled": false
+  }'
+```
+
+The response is the updated API key object. Disabling a key (`"enabled": false`) causes it to be rejected immediately on the next request.
+
+## Revoke a key
+
+Send a `DELETE` request to `/api/v1/api-keys/{apiKeyId}` to permanently remove a key. Revocation takes effect immediately.
+
+```bash
+curl -X DELETE https://api.pitpath.de/api/v1/api-keys/3fa85f64-5717-4562-b3fc-2c963f66afa6 \
+  -H "X-API-Key: <your-api-key>"
+```
+
+A successful revocation returns `204 No Content` with an empty body.

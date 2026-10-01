@@ -1,0 +1,359 @@
+---
+title: "Signup Fields API — custom event form fields"
+description: "Define and manage custom form fields for event registrations. Fields support text, select, checkbox, consent, and date input types."
+---
+
+The Signup Fields API lets you define custom form fields that appear on an event's registration form. Each field belongs to a specific event and is identified by a `fieldKey` that is unique within that event. Fields support multiple input types controlled by the `FieldType` enum, and you can provide options, defaults, and i18n data as arbitrary JSON objects. GET endpoints are public. Creating or updating fields requires a CRUD+ role.
+
+## Signup field object
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the signup field.
+</ResponseField>
+
+<ResponseField name="eventId" type="string (UUID)" required>
+  UUID of the event this field belongs to.
+</ResponseField>
+
+<ResponseField name="eventName" type="string" required>
+  Name of the event this field belongs to.
+</ResponseField>
+
+<ResponseField name="fieldKey" type="string" required>
+  Machine-readable key unique within the event (max 120 characters). Use this key when reading submitted form data.
+</ResponseField>
+
+<ResponseField name="label" type="string" required>
+  Human-readable label displayed on the registration form.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Optional helper text displayed below the field label.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  Input type. One of the `FieldType` enum values — see the table below.
+</ResponseField>
+
+<ResponseField name="required" type="boolean" required>
+  Whether the field must be filled in before the form can be submitted.
+</ResponseField>
+
+<ResponseField name="sortOrder" type="number">
+  Display order of the field within the form. Lower values appear first. `null` if unset.
+</ResponseField>
+
+<ResponseField name="optionsJson" type="object">
+  JSON object or array defining selectable options (used primarily with `SELECT`). `null` if not applicable.
+</ResponseField>
+
+<ResponseField name="defaultJson" type="object">
+  JSON value representing the field's default value. `null` if not set.
+</ResponseField>
+
+<ResponseField name="i18nJson" type="object">
+  JSON object containing localised label and description strings keyed by locale code. `null` if not set.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  Timestamp when the field was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)">
+  Timestamp of the most recent update.
+</ResponseField>
+
+### FieldType values
+
+| Value | Description |
+|---|---|
+| `TEXT` | Single-line text input |
+| `TEXT_AREA` | Multi-line text input |
+| `EMAIL` | Email address input with format validation |
+| `NUMBER` | Numeric input |
+| `SELECT` | Drop-down or radio selection from a predefined list in `optionsJson` |
+| `CHECKBOX` | Boolean tick-box |
+| `CONSENT` | Consent acknowledgement (e.g. terms and conditions) |
+| `DATE` | Date picker |
+
+---
+
+## List signup fields
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns all signup fields across all events as an unordered list.
+
+```
+GET /api/v1/signup-fields
+```
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/signup-fields \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+**Example response**
+
+```json 200
+[
+  {
+    "id": "11223344-5566-7788-99aa-bbccddeeff00",
+    "eventId": "aabbccdd-eeff-0011-2233-445566778899",
+    "eventName": "Summer Endurance Series 2024",
+    "fieldKey": "discord_handle",
+    "label": "Discord handle",
+    "description": "Your Discord username including the # tag",
+    "type": "TEXT",
+    "required": false,
+    "sortOrder": 10,
+    "optionsJson": null,
+    "defaultJson": null,
+    "i18nJson": null,
+    "createdAt": "2024-04-10T08:00:00Z",
+    "updatedAt": "2024-04-10T08:00:00Z"
+  }
+]
+```
+
+---
+
+## List signup fields (paged)
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns signup fields in a paginated response. Default page size is 20, sorted by `sortOrder`.
+
+```
+GET /api/v1/signup-fields/paged
+```
+
+**Query parameters**
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="sortOrder">
+  Field and direction, e.g. `sortOrder,asc`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl "https://chrono.pitpath.de/api/v1/signup-fields/paged?page=0&size=20" \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Get a signup field
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns a single signup field by its UUID.
+
+```
+GET /api/v1/signup-fields/{signupFieldId}
+```
+
+**Path parameters**
+
+<ParamField path="signupFieldId" type="string (UUID)" required>
+  The UUID of the signup field to retrieve.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/signup-fields/11223344-5566-7788-99aa-bbccddeeff00 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Create a signup field
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Creates a new custom field for an event. Returns `201 Created` with a `Location` header.
+
+```
+POST /api/v1/signup-fields
+```
+
+**Request body**
+
+<ParamField body="eventId" type="string (UUID)" required>
+  UUID of the event this field belongs to.
+</ParamField>
+
+<ParamField body="fieldKey" type="string" required>
+  Machine-readable key (max 120 characters). Must be unique within the event.
+</ParamField>
+
+<ParamField body="label" type="string" required>
+  Display label for the field on the registration form.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional helper text displayed below the label.
+</ParamField>
+
+<ParamField body="type" type="string">
+  `FieldType` enum value. Defaults to `TEXT` if omitted.
+</ParamField>
+
+<ParamField body="required" type="boolean">
+  Whether the field is mandatory. Defaults to `false`.
+</ParamField>
+
+<ParamField body="sortOrder" type="number">
+  Display position within the form. Lower values appear first.
+</ParamField>
+
+<ParamField body="optionsJson" type="object">
+  Options for `SELECT` fields as a JSON array of choice objects. Pass `null` or omit for other types.
+</ParamField>
+
+<ParamField body="defaultJson" type="object">
+  Default value for the field as a JSON value. Pass `null` or omit if there is no default.
+</ParamField>
+
+<ParamField body="i18nJson" type="object">
+  Localisation data as a JSON object keyed by locale code, e.g. `{"de": {"label": "Discord-Name"}}`. Pass `null` or omit if not needed.
+</ParamField>
+
+**Example request — plain text field**
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/signup-fields \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventId": "aabbccdd-eeff-0011-2233-445566778899",
+    "fieldKey": "discord_handle",
+    "label": "Discord handle",
+    "description": "Your Discord username including the # tag",
+    "type": "TEXT",
+    "required": false,
+    "sortOrder": 10
+  }'
+```
+
+**Example request — select field with options**
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/signup-fields \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventId": "aabbccdd-eeff-0011-2233-445566778899",
+    "fieldKey": "experience_level",
+    "label": "Experience level",
+    "type": "SELECT",
+    "required": true,
+    "sortOrder": 20,
+    "optionsJson": [
+      {"value": "beginner", "label": "Beginner"},
+      {"value": "intermediate", "label": "Intermediate"},
+      {"value": "expert", "label": "Expert"}
+    ]
+  }'
+```
+
+---
+
+## Update a signup field
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Partially updates an existing signup field. Only the fields you include are changed.
+
+```
+PATCH /api/v1/signup-fields/{signupFieldId}
+```
+
+**Path parameters**
+
+<ParamField path="signupFieldId" type="string (UUID)" required>
+  The UUID of the signup field to update.
+</ParamField>
+
+**Request body**
+
+<ParamField body="eventId" type="string (UUID)">
+  UUID of the new parent event, if reassigning.
+</ParamField>
+
+<ParamField body="fieldKey" type="string">
+  New machine-readable key (max 120 characters).
+</ParamField>
+
+<ParamField body="label" type="string">
+  New display label.
+</ParamField>
+
+<ParamField body="description" type="string">
+  New helper text.
+</ParamField>
+
+<ParamField body="type" type="string">
+  New `FieldType` value.
+</ParamField>
+
+<ParamField body="required" type="boolean">
+  Update whether the field is mandatory.
+</ParamField>
+
+<ParamField body="sortOrder" type="number">
+  New display position within the form.
+</ParamField>
+
+<ParamField body="optionsJson" type="object">
+  Replacement options JSON for `SELECT` fields.
+</ParamField>
+
+<ParamField body="defaultJson" type="object">
+  Replacement default value JSON.
+</ParamField>
+
+<ParamField body="i18nJson" type="object">
+  Replacement localisation JSON.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X PATCH https://chrono.pitpath.de/api/v1/signup-fields/11223344-5566-7788-99aa-bbccddeeff00 \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"required": true, "sortOrder": 5}'
+```
+
+**Example response**
+
+```json 200
+{
+  "id": "11223344-5566-7788-99aa-bbccddeeff00",
+  "eventId": "aabbccdd-eeff-0011-2233-445566778899",
+  "eventName": "Summer Endurance Series 2024",
+  "fieldKey": "discord_handle",
+  "label": "Discord handle",
+  "description": "Your Discord username including the # tag",
+  "type": "TEXT",
+  "required": true,
+  "sortOrder": 5,
+  "optionsJson": null,
+  "defaultJson": null,
+  "i18nJson": null,
+  "createdAt": "2024-04-10T08:00:00Z",
+  "updatedAt": "2024-07-20T10:45:00Z"
+}
+```

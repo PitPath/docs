@@ -1,0 +1,589 @@
+---
+title: "Tracks API — race circuits and layouts"
+description: "Manage race circuits and their individual layouts. Query tracks and layouts by ID or retrieve paginated lists with filtering and sorting."
+---
+
+The Tracks API gives you access to the full catalog of race circuits and their associated layouts. Each track represents a physical venue; each track layout is a specific configuration of that venue — for example, the full circuit versus an infield variant. GET endpoints are public and require no authentication. Creating or updating records requires a CRUD+ role.
+
+## Track object
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the track.
+</ResponseField>
+
+<ResponseField name="displayName" type="string" required>
+  Human-readable name of the circuit (3–120 characters).
+</ResponseField>
+
+<ResponseField name="alternativeNames" type="string[]" required>
+  Additional names or historical names for the circuit.
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  URL-safe identifier (2–20 characters).
+</ResponseField>
+
+<ResponseField name="logo" type="string" required>
+  CDN key for the circuit logo asset (max 255 characters).
+</ResponseField>
+
+<ResponseField name="svg" type="boolean">
+  Whether the logo asset is an SVG file.
+</ResponseField>
+
+<ResponseField name="country" type="string" required>
+  ISO 3166-1 alpha-3 country code (exactly 3 characters).
+</ResponseField>
+
+<ResponseField name="location" type="string" required>
+  City or region where the circuit is located (max 120 characters).
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+  Whether the track is visible in public listings.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  Timestamp when the track was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)">
+  Timestamp of the most recent update.
+</ResponseField>
+
+---
+
+## List tracks
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns all enabled tracks as an unordered list.
+
+```
+GET /api/v1/tracks
+```
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/tracks \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+**Example response**
+
+```json 200
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "displayName": "Nürburgring",
+    "alternativeNames": ["The Ring", "Grüne Hölle"],
+    "slug": "nurburgring",
+    "logo": "TRACK/nurburgring.svg",
+    "svg": true,
+    "country": "DEU",
+    "location": "Nürburg, Rhineland-Palatinate",
+    "enabled": true,
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-06-01T08:30:00Z"
+  }
+]
+```
+
+---
+
+## List tracks (paged)
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns enabled tracks in a paginated response. Default page size is 20, sorted by `displayName`.
+
+```
+GET /api/v1/tracks/paged
+```
+
+**Query parameters**
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="displayName">
+  Field to sort by and direction, e.g. `displayName,asc`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl "https://chrono.pitpath.de/api/v1/tracks/paged?page=0&size=10" \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Get a track
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns a single track by its UUID.
+
+```
+GET /api/v1/tracks/{trackId}
+```
+
+**Path parameters**
+
+<ParamField path="trackId" type="string (UUID)" required>
+  The UUID of the track to retrieve.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/tracks/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Create a track
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Creates a new track record. Returns `201 Created` with a `Location` header pointing to the new resource.
+
+```
+POST /api/v1/tracks
+```
+
+**Request body**
+
+<ParamField body="displayName" type="string" required>
+  Circuit name (3–120 characters).
+</ParamField>
+
+<ParamField body="alternativeNames" type="string[]" required>
+  Alternative or historical names. Send an empty array if none apply.
+</ParamField>
+
+<ParamField body="slug" type="string" required>
+  URL-safe identifier (2–20 characters). Must be unique.
+</ParamField>
+
+<ParamField body="logo" type="string" required>
+  CDN key of the logo asset uploaded via the CDN API (max 255 characters).
+</ParamField>
+
+<ParamField body="svg" type="boolean">
+  Set to `true` when the logo is an SVG file. Defaults to `false`.
+</ParamField>
+
+<ParamField body="country" type="string" required>
+  ISO 3166-1 alpha-3 country code (exactly 3 characters, e.g. `"DEU"`).
+</ParamField>
+
+<ParamField body="location" type="string" required>
+  City or region name (max 120 characters).
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Whether the track appears in public listings. Defaults to `true`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/tracks \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Nürburgring",
+    "alternativeNames": ["The Ring", "Grüne Hölle"],
+    "slug": "nurburgring",
+    "logo": "TRACK/nurburgring.svg",
+    "svg": true,
+    "country": "DEU",
+    "location": "Nürburg, Rhineland-Palatinate",
+    "enabled": true
+  }'
+```
+
+---
+
+## Update a track
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Partially updates an existing track. Send only the fields you want to change — omitted fields remain unchanged.
+
+```
+PATCH /api/v1/tracks/{trackId}
+```
+
+**Path parameters**
+
+<ParamField path="trackId" type="string (UUID)" required>
+  The UUID of the track to update.
+</ParamField>
+
+**Request body**
+
+<ParamField body="displayName" type="string">
+  New display name (3–120 characters).
+</ParamField>
+
+<ParamField body="alternativeNames" type="string[]">
+  Replacement list of alternative names.
+</ParamField>
+
+<ParamField body="slug" type="string">
+  New URL-safe identifier (2–20 characters).
+</ParamField>
+
+<ParamField body="logo" type="string">
+  New CDN key for the logo asset (max 255 characters).
+</ParamField>
+
+<ParamField body="svg" type="boolean">
+  Whether the new logo is an SVG file.
+</ParamField>
+
+<ParamField body="country" type="string">
+  New ISO 3166-1 alpha-3 country code (exactly 3 characters).
+</ParamField>
+
+<ParamField body="location" type="string">
+  New city or region name (max 120 characters).
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Set to `false` to hide the track from public listings.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X PATCH https://chrono.pitpath.de/api/v1/tracks/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}'
+```
+
+---
+
+## Track layout object
+
+A track layout represents a specific configuration of a circuit — for example the full GP layout versus a shorter national variant. Each layout belongs to exactly one track.
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the track layout.
+</ResponseField>
+
+<ResponseField name="displayName" type="string" required>
+  Human-readable name of the layout (3–120 characters).
+</ResponseField>
+
+<ResponseField name="slug" type="string" required>
+  URL-safe identifier (2–40 characters).
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  Circuit classification. One of the `TrackType` enum values — see below.
+</ResponseField>
+
+<ResponseField name="trackId" type="string (UUID)" required>
+  UUID of the parent track.
+</ResponseField>
+
+<ResponseField name="trackDisplayName" type="string" required>
+  Display name of the parent track.
+</ResponseField>
+
+<ResponseField name="length" type="number" required>
+  Circuit length in metres (minimum 1).
+</ResponseField>
+
+<ResponseField name="firstUsage" type="number" required>
+  Year this layout was first used in competition.
+</ResponseField>
+
+<ResponseField name="lastUsage" type="number" required>
+  Year this layout was last used. Send `-1` to indicate the layout is still in active use.
+</ResponseField>
+
+<ResponseField name="cornerCount" type="number" required>
+  Total number of corners on the layout.
+</ResponseField>
+
+<ResponseField name="cornerNames" type="string[]" required>
+  Names of each corner in order. Use `"-"` for unnamed corners.
+</ResponseField>
+
+<ResponseField name="trackMap" type="string" required>
+  CDN key for the track map image (max 255 characters).
+</ResponseField>
+
+<ResponseField name="trackImages" type="string[]" required>
+  CDN keys for additional circuit images.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+  Whether the layout appears in public listings.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  Timestamp when the layout was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)">
+  Timestamp of the most recent update.
+</ResponseField>
+
+### TrackType values
+
+| Value | Description |
+|---|---|
+| `PERMANENT_ROAD` | Dedicated road course built as a permanent race facility |
+| `PERMANENT_DIRT` | Dedicated dirt or gravel circuit as a permanent facility |
+| `PERMANENT_OVAL` | Permanent banked or flat oval track |
+| `TEMPORARY_ROAD` | Road course assembled temporarily for an event |
+| `TEMPORARY_DIRT` | Temporary dirt or gravel track |
+| `TEMPORARY_OVAL` | Temporary oval track |
+| `STREET_CIRCUIT_ROAD` | Street circuit using public roads with tarmac surface |
+| `STREET_CIRCUIT_DIRT` | Street circuit using public roads with dirt surface |
+| `RALLY` | Point-to-point or looped rally stage |
+
+---
+
+## List track layouts
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns all enabled track layouts.
+
+```
+GET /api/v1/track-layouts
+```
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/track-layouts \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## List track layouts (paged)
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns enabled track layouts in a paginated response. Default page size is 20, sorted by `displayName`.
+
+```
+GET /api/v1/track-layouts/paged
+```
+
+**Query parameters**
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Items per page.
+</ParamField>
+
+<ParamField query="sort" type="string" default="displayName">
+  Field and direction, e.g. `displayName,asc`.
+</ParamField>
+
+---
+
+## Get a track layout
+
+<Info>Public endpoint — no authentication required.</Info>
+
+Returns a single track layout by its UUID.
+
+```
+GET /api/v1/track-layouts/{trackLayoutId}
+```
+
+**Path parameters**
+
+<ParamField path="trackLayoutId" type="string (UUID)" required>
+  The UUID of the track layout to retrieve.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl https://chrono.pitpath.de/api/v1/track-layouts/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+## Create a track layout
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Creates a new layout for an existing track.
+
+```
+POST /api/v1/track-layouts
+```
+
+**Request body**
+
+<ParamField body="displayName" type="string" required>
+  Layout name (3–120 characters).
+</ParamField>
+
+<ParamField body="slug" type="string" required>
+  URL-safe identifier (2–40 characters).
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  `TrackType` enum value describing the circuit surface and permanence.
+</ParamField>
+
+<ParamField body="trackId" type="string (UUID)" required>
+  UUID of the parent track.
+</ParamField>
+
+<ParamField body="length" type="number" required>
+  Circuit length in metres (minimum 1).
+</ParamField>
+
+<ParamField body="firstUsage" type="number" required>
+  Year this layout was first used (minimum 0).
+</ParamField>
+
+<ParamField body="lastUsage" type="number" required>
+  Year this layout was last used. Pass `-1` for still-active layouts.
+</ParamField>
+
+<ParamField body="cornerCount" type="number" required>
+  Total number of corners (minimum 0).
+</ParamField>
+
+<ParamField body="cornerNames" type="string[]" required>
+  Names for each corner. Use `"-"` for unnamed corners.
+</ParamField>
+
+<ParamField body="trackMap" type="string" required>
+  CDN key for the circuit map image (max 255 characters).
+</ParamField>
+
+<ParamField body="trackImages" type="string[]" required>
+  CDN keys for additional circuit images.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Whether the layout appears in public listings. Defaults to `true`.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X POST https://chrono.pitpath.de/api/v1/track-layouts \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Grand Prix Circuit",
+    "slug": "nurburgring-gp",
+    "type": "PERMANENT_ROAD",
+    "trackId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "length": 5148,
+    "firstUsage": 1984,
+    "lastUsage": -1,
+    "cornerCount": 17,
+    "cornerNames": ["Einfahrt Motodrom", "Mercedes Arena", "-", "Ford Kurve"],
+    "trackMap": "TRACK/nurburgring-gp-map.svg",
+    "trackImages": ["TRACK/nurburgring-gp-aerial.jpg"],
+    "enabled": true
+  }'
+```
+
+---
+
+## Update a track layout
+
+<Warning>Requires CRUD+ role.</Warning>
+
+Partially updates a track layout. Only the fields you include are changed.
+
+```
+PATCH /api/v1/track-layouts/{trackLayoutId}
+```
+
+**Path parameters**
+
+<ParamField path="trackLayoutId" type="string (UUID)" required>
+  The UUID of the track layout to update.
+</ParamField>
+
+**Request body**
+
+<ParamField body="displayName" type="string">
+  New layout name (3–120 characters).
+</ParamField>
+
+<ParamField body="slug" type="string">
+  New URL-safe identifier (2–40 characters).
+</ParamField>
+
+<ParamField body="type" type="string">
+  New `TrackType` value.
+</ParamField>
+
+<ParamField body="trackId" type="string (UUID)">
+  UUID of the new parent track, if reassigning.
+</ParamField>
+
+<ParamField body="length" type="number">
+  New circuit length in metres (minimum 1).
+</ParamField>
+
+<ParamField body="firstUsage" type="number">
+  New first-usage year (minimum 0).
+</ParamField>
+
+<ParamField body="lastUsage" type="number">
+  New last-usage year. Use `-1` for still-active layouts.
+</ParamField>
+
+<ParamField body="cornerCount" type="number">
+  New corner count (minimum 0).
+</ParamField>
+
+<ParamField body="cornerNames" type="string[]">
+  Replacement list of corner names.
+</ParamField>
+
+<ParamField body="trackMap" type="string">
+  New CDN key for the circuit map (max 255 characters).
+</ParamField>
+
+<ParamField body="trackImages" type="string[]">
+  Replacement list of CDN keys for circuit images.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Set to `false` to hide the layout from public listings.
+</ParamField>
+
+**Example request**
+
+```bash cURL
+curl -X PATCH https://chrono.pitpath.de/api/v1/track-layouts/b2c3d4e5-f6a7-8901-bcde-f12345678901 \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"lastUsage": 2023, "enabled": false}'
+```

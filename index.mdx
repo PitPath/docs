@@ -1,0 +1,53 @@
+---
+title: "PitPath: Sim Racing Timing & Results API"
+description: "PitPath Chrono powers lap timing, event management, and results for sim racing competitions. Connect your rigs, record laps, and publish results via REST API."
+---
+
+PitPath Chrono is a REST API service built for sim racing organizers. It manages the full lifecycle of a timed competition — from registering your hardware rigs and setting up events to recording lap times with sector splits and surfacing results. Whether you're running a local hotlap challenge or a multi-round online championship, Chrono gives you the data layer to power it.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Make your first API call and record a lap time in minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to authenticate with API keys and pass them in requests.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore every endpoint — events, laps, participants, rigs, and more.
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/licenses-and-rigs">
+    Understand licenses, rigs, events, and how they connect.
+  </Card>
+</CardGroup>
+
+## How it works
+
+<Steps>
+  <Step title="Get a license and API key">
+    A PitPath license is issued to your organization. Use your license file to bootstrap a rig, then create API keys to authenticate your application.
+  </Step>
+  <Step title="Register your rigs">
+    Register each timing rig by its hardware ID and bind it to your license. Rigs are the physical or virtual machines that submit lap data.
+  </Step>
+  <Step title="Create an event">
+    Define an event with a simulator, allowed cars, track layouts, and participating rigs. Events control what's eligible for timing.
+  </Step>
+  <Step title="Record laps and view results">
+    Submit lap records with sector times and total time. Query the laps endpoint to build leaderboards and results pages.
+  </Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Register a Rig" icon="server" href="/guides/registering-a-rig">
+    Step-by-step guide to getting your first rig online.
+  </Card>
+  <Card title="Create an Event" icon="flag-checkered" href="/guides/creating-an-event">
+    Configure events with cars, tracks, and simulators.
+  </Card>
+  <Card title="Record Lap Times" icon="stopwatch" href="/guides/recording-laps">
+    Submit lap data with sector splits and validity flags.
+  </Card>
+  <Card title="Manage Participants" icon="users" href="/guides/managing-participants">
+    Add and update participants and their custom field data.
+  </Card>
+</CardGroup>

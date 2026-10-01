@@ -1,0 +1,276 @@
+---
+title: "Licenses API — manage organization credentials"
+description: "Create and retrieve organization licenses that authenticate your hardware rigs and API clients against the PitPath Chrono timing service."
+---
+
+A license represents an organization's credential within PitPath Chrono. Each license has a unique key and an optional expiry date. When you create a license, the response also includes a bootstrapped API key so you can immediately authenticate subsequent requests. Rigs and API keys are always scoped to a single license.
+
+---
+
+## POST /api/v1/licenses
+
+Create a new license for an organization. The response contains both the full license record and a newly-generated API key — this is the only time the full API key token is returned.
+
+**Required role:** `ADMIN`
+
+<ParamField body="name" type="string" required>
+  Internal identifier for the license. Must be 3–120 characters and must not be blank.
+</ParamField>
+
+<ParamField body="displayName" type="string" required>
+  Human-readable label shown in the UI and included in associated resource responses. Must be 3–120 characters.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/licenses \
+  --header 'Content-Type: application/json' \
+  --header 'X-API-Key: ppk_your_api_key_here' \
+  --data '{
+    "name": "acme-racing",
+    "displayName": "Acme Racing Team"
+  }'
+```
+
+<ResponseField name="license" type="object" required>
+  The newly created license record.
+  <Expandable title="license properties">
+    <ResponseField name="id" type="string (UUID)" required>
+      Unique identifier for the license.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Internal identifier as provided in the request.
+    </ResponseField>
+    <ResponseField name="displayName" type="string" required>
+      Human-readable display name.
+    </ResponseField>
+    <ResponseField name="licenseKey" type="string" required>
+      Opaque license key used to identify the organization.
+    </ResponseField>
+    <ResponseField name="enabled" type="boolean" required>
+      Whether this license is currently active.
+    </ResponseField>
+    <ResponseField name="expiresAt" type="string (ISO 8601)" >
+      Expiry timestamp. `null` if the license does not expire.
+    </ResponseField>
+    <ResponseField name="lastLoginAt" type="string (ISO 8601)">
+      Timestamp of the most recent authenticated request.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string (ISO 8601)" required>
+      Timestamp when the license was created.
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string (ISO 8601)" required>
+      Timestamp of the most recent update.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="apiKey" type="object" required>
+  A bootstrapped API key for the new license. The full `token` is only present in this response.
+  <Expandable title="apiKey properties">
+    <ResponseField name="apiKey" type="object" required>
+      API key metadata.
+      <Expandable title="apiKey.apiKey properties">
+        <ResponseField name="id" type="string (UUID)" required>
+          Unique identifier for the API key.
+        </ResponseField>
+        <ResponseField name="licenseId" type="string (UUID)" required>
+          License this key belongs to.
+        </ResponseField>
+        <ResponseField name="name" type="string" required>
+          Descriptive label for the key.
+        </ResponseField>
+        <ResponseField name="keyPrefix" type="string" required>
+          First few characters of the token, used to identify the key without exposing the full value.
+        </ResponseField>
+        <ResponseField name="role" type="string" required>
+          Access role granted to this key.
+        </ResponseField>
+        <ResponseField name="enabled" type="boolean" required>
+          Whether the key is currently active.
+        </ResponseField>
+        <ResponseField name="lastUsedAt" type="string (ISO 8601)">
+          Timestamp of last use.
+        </ResponseField>
+        <ResponseField name="createdAt" type="string (ISO 8601)" required>
+          Timestamp when the key was created.
+        </ResponseField>
+        <ResponseField name="updatedAt" type="string (ISO 8601)" required>
+          Timestamp of the most recent update.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="token" type="string" required>
+      Full API key token. Store this securely — it is never returned again after this response.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json
+{
+  "license": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "acme-racing",
+    "displayName": "Acme Racing Team",
+    "licenseKey": "lic_a1b2c3d4e5f6",
+    "enabled": true,
+    "expiresAt": null,
+    "lastLoginAt": null,
+    "createdAt": "2026-05-19T10:00:00Z",
+    "updatedAt": "2026-05-19T10:00:00Z"
+  },
+  "apiKey": {
+    "apiKey": {
+      "id": "f7e8d9c0-b1a2-3456-cdef-012345678901",
+      "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "bootstrap-key",
+      "keyPrefix": "ppk_a1b2",
+      "role": "CRUD",
+      "enabled": true,
+      "lastUsedAt": null,
+      "createdAt": "2026-05-19T10:00:00Z",
+      "updatedAt": "2026-05-19T10:00:00Z"
+    },
+    "token": "ppk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
+  }
+}
+```
+
+---
+
+## GET /api/v1/licenses
+
+Return all licenses registered in the system. You must hold a role that permits license management to call this endpoint.
+
+**Required role:** `ADMIN`
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/licenses \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+The response is an array of license objects. Each item has the same shape as the `license` object described in the POST response above.
+
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "acme-racing",
+    "displayName": "Acme Racing Team",
+    "licenseKey": "lic_a1b2c3d4e5f6",
+    "enabled": true,
+    "expiresAt": null,
+    "lastLoginAt": "2026-05-18T14:32:00Z",
+    "createdAt": "2026-05-19T10:00:00Z",
+    "updatedAt": "2026-05-19T10:00:00Z"
+  }
+]
+```
+
+---
+
+## GET /api/v1/licenses/current
+
+Return the license associated with the API key used in the request. Any authenticated user can call this endpoint regardless of role.
+
+**Required role:** Any authenticated user
+
+```bash
+curl --request GET \
+  --url https://api.pitpath.de/api/v1/licenses/current \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+<ResponseField name="id" type="string (UUID)" required>
+  Unique identifier for the license.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Internal identifier for the license.
+</ResponseField>
+
+<ResponseField name="displayName" type="string" required>
+  Human-readable display name.
+</ResponseField>
+
+<ResponseField name="licenseKey" type="string" required>
+  Opaque license key used to identify the organization.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether this license is currently active.
+</ResponseField>
+
+<ResponseField name="expiresAt" type="string (ISO 8601)">
+  Expiry timestamp. `null` if the license does not expire.
+</ResponseField>
+
+<ResponseField name="lastLoginAt" type="string (ISO 8601)">
+  Timestamp of the most recent authenticated request made under this license.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)" required>
+  Timestamp when the license was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string (ISO 8601)" required>
+  Timestamp of the most recent update.
+</ResponseField>
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "acme-racing",
+  "displayName": "Acme Racing Team",
+  "licenseKey": "lic_a1b2c3d4e5f6",
+  "enabled": true,
+  "expiresAt": null,
+  "lastLoginAt": "2026-05-18T14:32:00Z",
+  "createdAt": "2026-05-01T08:00:00Z",
+  "updatedAt": "2026-05-18T14:32:00Z"
+}
+```
+
+---
+
+## POST /api/v1/licenses/{licenseId}/file
+
+Issue a signed license file for a specific license. License files are used by timing rigs to self-register via `POST /api/v1/rigs`. You must own or be authorized to act on the specified license.
+
+**Required role:** License owner or `ADMIN`
+
+<ParamField path="licenseId" type="string (UUID)" required>
+  The UUID of the license for which you want to generate a signed file.
+</ParamField>
+
+```bash
+curl --request POST \
+  --url https://api.pitpath.de/api/v1/licenses/a1b2c3d4-e5f6-7890-abcd-ef1234567890/file \
+  --header 'X-API-Key: ppk_your_api_key_here'
+```
+
+<ResponseField name="licenseId" type="string (UUID)" required>
+  The license this file was issued for.
+</ResponseField>
+
+<ResponseField name="licenseKey" type="string" required>
+  The license key embedded in the signed file.
+</ResponseField>
+
+<ResponseField name="issuedAt" type="string (ISO 8601)" required>
+  Timestamp when the file was issued.
+</ResponseField>
+
+<ResponseField name="signature" type="string" required>
+  Cryptographic signature verifying the authenticity of this license file. Pass the entire object as `licenseFile` when registering a rig.
+</ResponseField>
+
+```json
+{
+  "licenseId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "licenseKey": "lic_a1b2c3d4e5f6",
+  "issuedAt": "2026-05-19T10:05:00Z",
+  "signature": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+}
+```

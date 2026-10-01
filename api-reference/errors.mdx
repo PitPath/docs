@@ -1,0 +1,135 @@
+---
+title: "API error codes and troubleshooting"
+description: "Understand how Chrono surfaces errors using RFC 9457 Problem Details, what each HTTP status code means, and how to resolve common failures."
+---
+
+When a request cannot be completed, the Chrono API returns a structured error response rather than a plain message. Every error uses the [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) format, which gives you a consistent, machine-readable error shape across all endpoints.
+
+## Error response structure
+
+All error responses share the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | A URI that identifies the problem type |
+| `title` | string | A short, human-readable summary of the problem |
+| `status` | integer | The HTTP status code |
+| `detail` | string | A human-readable explanation specific to this occurrence |
+| `instance` | string | The request path that produced the error |
+
+Example error response:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Resource not found",
+  "status": 404,
+  "detail": "Event '3fa85f64-5717-4562-b3fc-2c963f66afa6' was not found.",
+  "instance": "/api/v1/events/3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+## HTTP status codes
+
+| Status | Meaning | When it occurs |
+|---|---|---|
+| `400 Bad Request` | Validation failed | A required field is missing or a field value is invalid |
+| `401 Unauthorized` | Authentication failed | The `X-API-Key` header is missing or the key is invalid |
+| `403 Forbidden` | Insufficient permissions | Your API key's role does not allow this action |
+| `404 Not Found` | Resource not found | The ID or slug in the path does not match any record |
+| `409 Conflict` | Duplicate resource | You are trying to create a resource that already exists |
+| `500 Internal Server Error` | Unexpected server error | An unhandled condition occurred on the server |
+
+## Application-specific exceptions
+
+The following exceptions are thrown by the Chrono application and map to specific HTTP status codes.
+
+### `ResourceNotFoundException` — 404
+
+Thrown when a requested record cannot be found by its identifier. The `detail` field follows the pattern:
+
+```
+{ResourceName} '{identifier}' was not found.
+```
+
+**What to check:** Verify that the ID or slug in your request path is correct and that the resource has not been deleted.
+
+### `DuplicateEmailException` — 409
+
+Thrown when you attempt to register a license or user with an email address that is already in use. The `detail` field follows the pattern:
+
+```
+A user with email '{email}' already exists.
+```
+
+**What to check:** Use a different email address, or retrieve the existing resource instead of creating a new one.
+
+### `DuplicateSlugException` — 409
+
+Thrown when a resource is created with a slug that is already taken by another object of the same type. The `detail` field follows the pattern:
+
+```
+An object with slug '{slug}' already exists.
+```
+
+**What to check:** Choose a unique slug, or query existing resources to find one with the slug you want.
+
+### `DuplicateSimulatorCarException` — 409
+
+Thrown when you try to link a car to a simulator that already has that car associated with it. The `detail` field follows the pattern:
+
+```
+Simulator car for simulator '{simulatorId}' and car '{carId}' already exists.
+```
+
+**What to check:** Query the simulator's existing car associations before adding a new one.
+
+### `DuplicateSimulatorLayoutException` — 409
+
+Thrown when you try to link a track layout to a simulator that already has that layout associated. The `detail` field follows the pattern:
+
+```
+Simulator layout for simulator '{simulatorId}' and track layout '{trackLayoutId}' already exists.
+```
+
+**What to check:** Query the simulator's existing track layout associations before adding a new one.
+
+## Handling 400 validation errors
+
+When the request body fails validation, the API returns a `400 Bad Request` with an additional `errors` property containing field-level details.
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 400,
+  "detail": "One or more request fields are invalid.",
+  "instance": "/api/v1/events",
+  "errors": {
+    "name": "must not be blank",
+    "startDate": "must not be null"
+  }
+}
+```
+
+<Note>
+The `errors` map contains one entry per invalid field. Each key is the field name and each value is the constraint violation message. Fix all reported fields before retrying the request.
+</Note>
+
+## Handling 401 and 403 errors
+
+A `401 Unauthorized` response means the API could not identify you — either the `X-API-Key` header is missing entirely or the key has been revoked. A `403 Forbidden` response means the key is valid, but the role associated with it does not permit the operation you attempted.
+
+<Warning>
+If you rotate or delete an API key that is in active use, all requests using that key will immediately start returning `401`. Make sure you update all integrations before removing a key.
+</Warning>
+
+## Handling 500 errors
+
+A `500 Internal Server Error` indicates an unexpected condition on the server. The `detail` field will contain:
+
+```
+Something went wrong. Please try again later or contact support.
+```
+
+The full error is logged server-side. If the error is reproducible, include the `instance` path and the request body when contacting support.

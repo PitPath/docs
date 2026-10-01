@@ -1,0 +1,135 @@
+---
+title: "Licenses and Rigs in PitPath Chrono"
+description: "Understand how licenses grant your organization access to PitPath Chrono, how rigs identify timing hardware, and how API keys control permissions."
+---
+
+A **license** is the root credential that ties your organization to PitPath Chrono. Every rig, participant, and API key you create is linked to a license. Before anything else can happen, a license must exist and be active.
+
+## Licenses
+
+A license represents your organization's subscription to the Chrono platform. It carries a human-readable display name, a machine-readable license key, and an optional expiry timestamp. If `expiresAt` is `null`, the license never expires; otherwise Chrono will reject requests from it after that instant.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Immutable identifier |
+| `name` | string | Internal name (max 120 chars) |
+| `displayName` | string | Shown in UIs and responses |
+| `licenseKey` | string | Unique key used for rig registration |
+| `enabled` | boolean | `false` suspends all access |
+| `expiresAt` | ISO 8601 or `null` | `null` means no expiry |
+| `lastLoginAt` | ISO 8601 or `null` | Updated on each successful auth |
+| `createdAt` | ISO 8601 | |
+| `updatedAt` | ISO 8601 | |
+
+```json title="GET /api/v1/licenses/{id} — example response"
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000001",
+  "name": "acme-racing",
+  "displayName": "ACME Racing League",
+  "licenseKey": "ACME-2024-XXXX-YYYY-ZZZZ",
+  "enabled": true,
+  "expiresAt": "2025-12-31T23:59:59Z",
+  "lastLoginAt": "2024-11-01T14:32:00Z",
+  "createdAt": "2024-01-15T09:00:00Z",
+  "updatedAt": "2024-11-01T14:32:00Z"
+}
+```
+
+<Note>
+  A license is considered active when `enabled` is `true` **and** either `expiresAt` is `null` or it has not yet passed. Chrono checks both conditions on every authenticated request.
+</Note>
+
+---
+
+## Rigs
+
+A rig is a physical or virtual timing computer that submits lap data to Chrono. Each rig is bound to exactly one license and is identified by a `hardwareId` — a string your timing software derives from the machine (MAC address, motherboard serial, or a stable UUID you generate). Two rigs on the same license must have different `hardwareId` values.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Immutable identifier |
+| `name` | string | Friendly name shown in dashboards |
+| `description` | string | Optional free-text description |
+| `hardwareId` | string | Stable machine identifier |
+| `licenseId` | UUID | The owning license |
+| `licenseDisplayName` | string | Denormalized for convenience |
+| `enabled` | boolean | Disabled rigs are rejected at auth |
+| `createdAt` | ISO 8601 | |
+| `updatedAt` | ISO 8601 | |
+
+```json title="POST /api/v1/rigs — example response"
+{
+  "id": "b2c3d4e5-0000-0000-0000-000000000002",
+  "name": "Sim Bay 3",
+  "description": "Triple-screen Fanatec setup, bay 3",
+  "hardwareId": "MB-SN-2024-ACME-BAY3",
+  "licenseId": "a1b2c3d4-0000-0000-0000-000000000001",
+  "licenseDisplayName": "ACME Racing League",
+  "enabled": true,
+  "createdAt": "2024-06-01T10:00:00Z",
+  "updatedAt": "2024-06-01T10:00:00Z"
+}
+```
+
+### Registering a rig
+
+To register a new rig, `POST /api/v1/rigs` with a JSON body containing the `hardwareId` and the `licenseFile` signed token. Chrono validates the license, creates the rig record, and returns a response that includes both the rig details and a freshly issued API key token. **Store that token immediately** — the raw token is only returned once.
+
+```json title="POST /api/v1/rigs — registration response envelope"
+{
+  "rig": { "...": "rig fields as above" },
+  "apiKey": {
+    "apiKey": {
+      "id": "c3d4e5f6-0000-0000-0000-000000000003",
+      "licenseId": "a1b2c3d4-0000-0000-0000-000000000001",
+      "name": "Sim Bay 3 — auto key",
+      "keyPrefix": "ppck_bay3",
+      "role": "CR",
+      "enabled": true,
+      "lastUsedAt": null,
+      "createdAt": "2024-06-01T10:00:00Z",
+      "updatedAt": "2024-06-01T10:00:00Z"
+    },
+    "token": "ppck_bay3_<redacted>"
+  }
+}
+```
+
+<Warning>
+  The `token` value in the registration response is shown **once**. Chrono stores only a hash (`keyHash`) and can never reproduce the original. If you lose it, delete the API key and create a new one.
+</Warning>
+
+---
+
+## API Keys
+
+API keys are scoped credentials issued per license. They are what you actually send in the `X-API-Key` header on every request. Each key carries a `role` that determines what operations it can perform:
+
+<CardGroup cols={2}>
+  <Card title="R — Read only" icon="eye">
+    Can fetch events, laps, participants, and results. Cannot write any data.
+  </Card>
+  <Card title="CR — Create + Read" icon="pen">
+    Can submit laps and create participants. Assigned automatically to newly registered rigs.
+  </Card>
+  <Card title="CRUD — Full data access" icon="database">
+    Can create, read, update, and delete all resources within the license.
+  </Card>
+  <Card title="ADMIN — License management" icon="shield">
+    Can manage other API keys and perform license-level operations.
+  </Card>
+</CardGroup>
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | |
+| `licenseId` | UUID | Owning license |
+| `name` | string | Human-readable label |
+| `keyPrefix` | string | First 16 chars of key — safe to log |
+| `role` | `R` \| `CR` \| `CRUD` \| `ADMIN` | Access level |
+| `enabled` | boolean | |
+| `lastUsedAt` | ISO 8601 or `null` | |
+
+<Note>
+  Only the `keyPrefix` is returned in list and detail responses. The full token is only available in the response to `POST /api/v1/api-keys` at creation time. Use `keyPrefix` in your logs to identify which key made a request without exposing credentials.
+</Note>
